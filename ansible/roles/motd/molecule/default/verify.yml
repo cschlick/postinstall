@@ -1,0 +1,45 @@
+---
+- name: Verify
+  hosts: all
+  become: true
+  tasks:
+    - name: Stat the MOTD script
+      ansible.builtin.stat:
+        path: /etc/update-motd.d/10-postinstall
+      register: verify_motd_script
+
+    - name: Assert MOTD script is installed and executable
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          - verify_motd_script.stat.exists
+          - verify_motd_script.stat.mode == "0755"
+          - verify_motd_script.stat.pw_name == "root"
+
+    - name: Check MOTD script for syntax errors
+      ansible.builtin.command: bash -n /etc/update-motd.d/10-postinstall
+      changed_when: false
+
+    - name: Run MOTD script
+      ansible.builtin.command: /etc/update-motd.d/10-postinstall
+      changed_when: false
+      register: verify_motd_output
+
+    - name: Assert MOTD output mentions cloud-init and last apply
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          - "'cloud-init' in verify_motd_output.stdout"
+          - "'last apply' in verify_motd_output.stdout"
+
+    - name: Stat /etc/motd
+      ansible.builtin.stat:
+        path: /etc/motd
+      register: verify_static_motd
+
+    - name: Assert /etc/motd is empty
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          - verify_static_motd.stat.exists
+          - verify_static_motd.stat.size == 0

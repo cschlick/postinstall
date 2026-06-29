@@ -51,6 +51,8 @@
       tags: [disable_mdns, mdns]
     - role: disable_cups
       tags: [disable_cups, cups]
+    - role: motd
+      tags: [motd]
     # --- Vultr image build (only when image_build=true; IMAGE_BUILD=1 apply.sh) ---
     - role: cloud_init
       when: image_build | default(false)

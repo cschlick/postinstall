@@ -35,3 +35,7 @@ sudo apt-get update && sudo apt-get install -y ansible
 ansible-galaxy collection install -r requirements.yml
 echo "==> logging this run to $LOG${IMAGE_BUILD:+  (IMAGE BUILD)}"
 ANSIBLE_LOG_PATH="$LOG" ansible-playbook -i 'localhost,' -c local site.yml "${EXTRA[@]}"
+
+# Expose the latest log at a fixed path so the dynamic MOTD can find it.
+sudo mkdir -p /var/log/ansible-apply
+sudo ln -sf "$LOG" /var/log/ansible-apply/latest.log

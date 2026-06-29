@@ -1,0 +1,3 @@
+---
+# Path apply.sh symlinks to after each run (must match apply.sh).
+motd_apply_log: /var/log/ansible-apply/latest.log

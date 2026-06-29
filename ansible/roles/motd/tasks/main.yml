@@ -1,0 +1,17 @@
+---
+- name: Install dynamic MOTD script
+  ansible.builtin.template:
+    src: 10-postinstall.j2
+    dest: /etc/update-motd.d/10-postinstall
+    owner: root
+    group: root
+    mode: "0755"
+
+# Ensure the static /etc/motd is empty so pam_motd doesn't double-print.
+- name: Clear static /etc/motd
+  ansible.builtin.copy:
+    content: ""
+    dest: /etc/motd
+    owner: root
+    group: root
+    mode: "0644"

@@ -1,0 +1,12 @@
+---
+galaxy_info:
+  role_name: motd
+  author: cschlick
+  description: Install a dynamic MOTD showing cloud-init status and last ansible apply summary
+  license: MIT
+  min_ansible_version: "2.15"
+  platforms:
+    - name: Debian
+      versions:
+        - trixie
+dependencies: []
