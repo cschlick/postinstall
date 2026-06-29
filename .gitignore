@@ -1,5 +1,2 @@
-# Locally-set secrets (e.g. pmuser emergency password hash) — never commit.
-ansible/secrets.local.yml
-
 # Per-run apply logs.
 logs/

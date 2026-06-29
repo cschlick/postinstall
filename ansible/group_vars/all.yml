@@ -18,13 +18,10 @@ ssh_authorized_keys:
 ssh_allow_users: ["pmuser"]   # only this user may log in over SSH (AllowUsers)
 
 # --- accounts role: emergency console password for pmuser ---
-# pmuser's emergency console password is NOT set here. Run, once:
-#   sudo bash set-emergency-password.sh
-# It hashes the password you type and writes ansible/secrets.local.yml
-# (gitignored, mode 600), which apply.sh auto-loads. The hash is then enforced
-# idempotently on every apply; you never re-type the password. Leave it unset
-# and pmuser stays password-less. SSH password auth is off, so the password is
-# only usable at the Vultr web console / serial — never over the network.
+# sha512crypt hash of pmuser's Vultr-console password. SSH password auth is off,
+# so this is only usable at the Vultr web console / serial — never over the network.
+# The hash is public; rotate by generating a new one: printf 'pw' | openssl passwd -6 -stdin
+pmuser_password_hash: '$6$6c542fqMG9OpAwq0$EhzzbEuWg8xjGPrqUiVmQs.j7gZc5De2MIShTbKxOVCOQ9S7EWzUik4sgjvWDey6zGhmpHZ0JJZU3XEKwjJ7d/'
 
 # --- group_prune role ---
 # Strip a user from peripheral/desktop groups it doesn't need on a headless box
