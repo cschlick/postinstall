@@ -17,7 +17,7 @@
 # a change only when an actual upgrade happened.
 - name: Install/upgrade greasewood from GitLab
   ansible.builtin.command:
-    cmd: "{{ greasewood_venv }}/bin/pip install --upgrade git+{{ greasewood_repo }}"
+    cmd: "{{ greasewood_venv }}/bin/pip install --force-reinstall git+{{ greasewood_repo }}"
   register: greasewood_pip
   changed_when: "'Successfully installed' in greasewood_pip.stdout"
 
