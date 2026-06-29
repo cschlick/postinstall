@@ -18,4 +18,4 @@ ansible-galaxy collection install -r "$ROOT/ansible/requirements.yml"
 
 sudo mkdir -p /var/log/ansible-apply
 ANSIBLE_LOG_PATH=/var/log/ansible-apply/latest.log \
-  ansible-pull -U "$REPO" -d "$ROOT" -c local "${EXTRA[@]}" ansible/site.yml
+  ansible-pull -U "$REPO" -d "$ROOT" -i 'localhost,' -c local -l localhost "${EXTRA[@]}" ansible/site.yml
