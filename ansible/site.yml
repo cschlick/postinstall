@@ -25,6 +25,10 @@
       tags: [pwquality]
     - role: pam
       tags: [pam]
+    # Must follow pam: pam strips nullok so an empty root hash can't
+    # authenticate — only then is it safe to empty root's shadow field.
+    - role: root_password
+      tags: [root_password, accounts]
     - role: group_prune
       tags: [group_prune]
     - role: networkd
@@ -59,10 +63,10 @@
     - role: image_generalize
       when: image_build | default(false)
       tags: [image_generalize, image]
-    # The accounts role (above) now ensures pmuser exists and purges linuxuser.
+    # The accounts role (above) ensures pmuser exists and purges linuxuser; the
+    # root_password role (after pam) empties root's shadow password field.
     # Still intentionally NOT ported (interactive / per-host provisioning, not
-    # headless hardening): user passwords, dotfiles, WireGuard, NFS mounts, and
-    # "disable root password".
+    # headless hardening): user passwords, dotfiles, WireGuard, NFS mounts.
     #
     # Run a subset with:  ansible-playbook site.yml --tags ssh,sysctl
     # Skip the heavy one-off upgrade with:  ... --skip-tags system_upgrade

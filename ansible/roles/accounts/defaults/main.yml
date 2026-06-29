@@ -8,6 +8,13 @@ accounts_present:
     groups: [sudo]
     shell: /bin/bash
     create_home: true
+    # Emergency CONSOLE password for pmuser (SSH password auth is off, so it's
+    # only usable at the Vultr web console / serial). pmuser_password_hash is a
+    # sha512crypt hash set by set-emergency-password.sh; unset => omit => no
+    # password. 'always' (not on_create) so it applies to the ALREADY-EXISTING
+    # pmuser and is re-asserted idempotently each run.
+    password: "{{ pmuser_password_hash | default(omit) }}"
+    update_password: always
 
 # Accounts to FULLY purge if present: the user plus its home directory, mail
 # spool and (via userdel) its now-unused primary group. Any processes the user

@@ -10,6 +10,12 @@
     append: "{{ item.append | default(true) }}"
     shell: "{{ item.shell | default('/bin/bash') }}"
     create_home: "{{ item.create_home | default(true) }}"
+    # Optional pre-hashed password (sha512crypt). Omitted => account is left
+    # password-less/locked, as before. update_password defaults to on_create so
+    # a hash isn't pushed onto an existing account; an item can override it
+    # (pmuser uses 'always' to enforce its emergency password every run).
+    password: "{{ item.password | default(omit) }}"
+    update_password: "{{ item.update_password | default('on_create') }}"
     state: present
   loop: "{{ accounts_present }}"
   loop_control:

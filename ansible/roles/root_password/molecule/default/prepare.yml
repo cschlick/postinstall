@@ -1,0 +1,13 @@
+---
+- name: Prepare
+  hosts: all
+  become: true
+  tasks:
+    # Give root a real password hash so the role has something to remove —
+    # otherwise the base image may already ship an empty/locked field and the
+    # test would pass without exercising anything.
+    - name: Set a throwaway root password
+      ansible.builtin.command:
+        cmd: chpasswd
+        stdin: "root:molecule-temp-pw"
+      changed_when: true
