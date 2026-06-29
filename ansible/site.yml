@@ -19,6 +19,8 @@
       tags: [nftables]
     - role: packages
       tags: [packages]
+    - role: greasewood
+      tags: [greasewood]
     - role: auditd
       tags: [auditd]
     - role: pwquality

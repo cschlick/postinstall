@@ -1,0 +1,31 @@
+---
+- name: Verify
+  hosts: all
+  become: true
+  tasks:
+    - name: Stat the greasewood venv
+      ansible.builtin.stat:
+        path: /opt/greasewood/bin/python
+      register: verify_venv
+
+    - name: Assert venv was created
+      ansible.builtin.assert:
+        quiet: true
+        that: verify_venv.stat.exists
+
+    - name: Stat the greasewood symlink
+      ansible.builtin.stat:
+        path: /usr/local/bin/greasewood
+      register: verify_symlink
+
+    - name: Assert symlink exists and points into the venv
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          - verify_symlink.stat.exists
+          - verify_symlink.stat.islnk
+          - "'/opt/greasewood' in verify_symlink.stat.lnk_target"
+
+    - name: Run greasewood --version (smoke test)
+      ansible.builtin.command: /usr/local/bin/greasewood --version
+      changed_when: false

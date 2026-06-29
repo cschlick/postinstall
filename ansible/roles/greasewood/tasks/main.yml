@@ -1,0 +1,30 @@
+---
+- name: Install greasewood system dependencies
+  ansible.builtin.apt:
+    name:
+      - python3-venv
+      - wireguard-tools
+    state: present
+    update_cache: false
+
+- name: Create greasewood virtualenv
+  ansible.builtin.command:
+    cmd: python3 -m venv {{ greasewood_venv }}
+    creates: "{{ greasewood_venv }}/bin/python"
+
+# --upgrade fetches the latest git HEAD and reinstalls if it has changed.
+# changed_when keys on pip's "Successfully installed" line so Ansible reports
+# a change only when an actual upgrade happened.
+- name: Install/upgrade greasewood from GitLab
+  ansible.builtin.command:
+    cmd: "{{ greasewood_venv }}/bin/pip install --upgrade git+{{ greasewood_repo }}"
+  register: greasewood_pip
+  changed_when: "'Successfully installed' in greasewood_pip.stdout"
+
+- name: Symlink greasewood into PATH
+  ansible.builtin.file:
+    src: "{{ greasewood_venv }}/bin/greasewood"
+    dest: "{{ greasewood_bin }}"
+    state: link
+    owner: root
+    group: root
