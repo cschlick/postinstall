@@ -1,0 +1,12 @@
+---
+galaxy_info:
+  role_name: group_prune
+  author: cschlick
+  description: Remove users from unneeded supplementary groups (headless account hardening)
+  license: MIT
+  min_ansible_version: "2.15"
+  platforms:
+    - name: Debian
+      versions:
+        - trixie
+dependencies: []

@@ -1,0 +1,31 @@
+---
+- name: Verify
+  hosts: all
+  become: true
+  tasks:
+    - name: Stat the cloud-init drop-in
+      ansible.builtin.stat:
+        path: /etc/cloud/cloud.cfg.d/99-vultr-image.cfg
+      register: ci_cfg
+
+    - name: Assert the drop-in exists and is mode 0644
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          - ci_cfg.stat.exists
+          - ci_cfg.stat.mode == '0644'
+
+    - name: Read the drop-in
+      ansible.builtin.slurp:
+        src: /etc/cloud/cloud.cfg.d/99-vultr-image.cfg
+      register: ci_body
+
+    - name: Assert the Vultr datasource + baked-image settings rendered
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          - "'datasource_list: [ Vultr, None ]' in (ci_body.content | b64decode)"
+          - "'network: {config: disabled}' in (ci_body.content | b64decode)"
+          - "'ssh_pwauth: false' in (ci_body.content | b64decode)"
+          - "'ssh_genkeytypes: [ed25519, rsa]' in (ci_body.content | b64decode)"
+          - "'disable_root: true' in (ci_body.content | b64decode)"

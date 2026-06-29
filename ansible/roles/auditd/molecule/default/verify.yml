@@ -1,0 +1,45 @@
+---
+- name: Verify
+  hosts: all
+  become: true
+  tasks:
+    - name: Stat the hardening ruleset
+      ansible.builtin.stat:
+        path: /etc/audit/rules.d/hardening.rules
+      register: auditd_rules_file
+
+    - name: Assert the ruleset exists and is mode 0600
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          - auditd_rules_file.stat.exists
+          - auditd_rules_file.stat.mode == '0600'
+
+    - name: Read the rendered ruleset
+      ansible.builtin.slurp:
+        src: /etc/audit/rules.d/hardening.rules
+      register: auditd_rules
+
+    - name: Assert key rules and the immutable flag rendered
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          - "'-w /etc/shadow -p wa -k identity' in (auditd_rules.content | b64decode)"
+          - "'-w /etc/ssh/sshd_config -p wa -k sshd' in (auditd_rules.content | b64decode)"
+          - "'-w /etc/nftables.conf -p wa -k firewall' in (auditd_rules.content | b64decode)"
+          - "'-k time-change' in (auditd_rules.content | b64decode)"
+          # converge sets auditd_immutable: true, so -e 2 must be the last rule
+          - "(auditd_rules.content | b64decode).split() | last == '2'"
+          - "'-e 2' in (auditd_rules.content | b64decode)"
+
+    - name: Read auditd.conf
+      ansible.builtin.slurp:
+        src: /etc/audit/auditd.conf
+      register: auditd_conf
+
+    - name: Assert retention was set (replace-or-append)
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          - "'max_log_file = 32' in (auditd_conf.content | b64decode)"
+          - "'num_logs = 10' in (auditd_conf.content | b64decode)"

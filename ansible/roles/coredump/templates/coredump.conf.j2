@@ -1,0 +1,7 @@
+# {{ ansible_managed }}
+# Port of configs/coredump/coredump.conf → /etc/systemd/coredump.conf.d/disable.conf
+# systemd-coredump intercepts crashes via the kernel core_pattern. Tell it to
+# keep nothing, so dumps that slip past the limits above are not stored.
+[Coredump]
+Storage=none
+ProcessSizeMax=0

@@ -1,0 +1,9 @@
+---
+- name: Converge
+  hosts: all
+  become: true
+  vars:
+    # fs.suid_dumpable is host-global; don't run sysctl --system in the container.
+    coredump_apply: false
+  roles:
+    - role: coredump

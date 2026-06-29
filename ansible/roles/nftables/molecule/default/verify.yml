@@ -1,0 +1,47 @@
+---
+- name: Verify
+  hosts: all
+  become: true
+  tasks:
+    - name: Read the live ruleset
+      ansible.builtin.command: nft list ruleset
+      register: nftables_ruleset
+      changed_when: false
+
+    - name: Assert the hardened ruleset is loaded
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          - "'hook input' in nftables_ruleset.stdout"
+          - "'policy drop' in nftables_ruleset.stdout"
+          # SSH is accepted on IPv6 only (by design).
+          - "'ip6 saddr ::/0 tcp dport 22 ct state new accept' in nftables_ruleset.stdout"
+          # Extra ports are accepted on both families.
+          - "'tcp dport 9100 ct state new accept' in nftables_ruleset.stdout"   # from converge
+          - "'nft-input-drop' in nftables_ruleset.stdout"
+
+    # nftables.service is a oneshot (RemainAfterExit=yes): it loads the ruleset
+    # and exits, so service_facts reports it "stopped". ActiveState is the right
+    # probe — it stays 'active' for a oneshot that remained up. Querying with no
+    # state/enabled args doesn't change anything.
+    - name: Probe nftables unit state
+      ansible.builtin.systemd_service:
+        name: nftables
+      register: nftables_unit
+
+    - name: Assert nftables is active and enabled
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          - nftables_unit.status.ActiveState == 'active'
+          - nftables_unit.status.UnitFileState == 'enabled'
+
+    - name: Stat the ruleset file
+      ansible.builtin.stat:
+        path: /etc/nftables.conf
+      register: nftables_file
+
+    - name: Assert the ruleset file is mode 0644
+      ansible.builtin.assert:
+        quiet: true
+        that: nftables_file.stat.mode == '0644'

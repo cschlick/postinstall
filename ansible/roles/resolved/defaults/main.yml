@@ -1,0 +1,18 @@
+---
+# Disable LLMNR and MulticastDNS — pointless responder/spoof surface on a server.
+resolved_llmnr: "no"
+resolved_multicast_dns: "no"
+
+# Optional split-DNS routing domains. When resolved_routing_domains is non-empty
+# a routing-domains.conf drop-in is written (Domains=… DNS=…); empty removes it.
+# Example: resolved_routing_domains: ["~corp.example"], resolved_dns: ["10.0.0.1"]
+resolved_routing_domains: []
+resolved_dns: []
+
+# Host probed to confirm DNS recovered after the resolv.conf swap / restarts.
+resolved_dns_probe: deb.debian.org
+
+# When false, write the drop-ins but DON'T touch services, the /etc/resolv.conf
+# symlink, systemd-networkd, or wait for DNS. The molecule scenario sets this
+# false — the resolv.conf swap and service restarts are live-network operations.
+resolved_apply: true

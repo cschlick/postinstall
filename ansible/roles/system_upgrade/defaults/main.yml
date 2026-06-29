@@ -1,0 +1,10 @@
+---
+# Refresh the apt cache and upgrade installed packages — the
+# `apt update && apt upgrade --with-new-pkgs` equivalent (port of
+# lib/sysupgrade.py). Ansible's `upgrade: safe` adds --with-new-pkgs, letting
+# security updates that need a new dependency through, without removing packages
+# the way dist-upgrade can. A reboot may be needed for kernel updates.
+
+# When false, refresh the cache but DON'T run the upgrade. The molecule scenario
+# sets this false (a full upgrade in a throwaway container is slow and pointless).
+system_upgrade_apply: true

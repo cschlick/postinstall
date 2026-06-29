@@ -1,0 +1,79 @@
+---
+# --- cloud-init state: so a deployed instance sees a fresh first boot ---
+- name: Reset cloud-init state
+  ansible.builtin.command: cloud-init clean --logs --seed
+  changed_when: true
+  failed_when: false   # cloud-init may be absent in test containers
+
+- name: Remove leftover cloud-init instance data
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /var/lib/cloud/instance
+    - /var/lib/cloud/instances
+    - /var/lib/cloud/data
+
+# --- SSH host keys: regenerated uniquely on first boot ---
+- name: Find SSH host keys
+  ansible.builtin.find:
+    paths: /etc/ssh
+    patterns: "ssh_host_*"
+  register: image_host_keys
+
+- name: Remove SSH host keys
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: absent
+  loop: "{{ image_host_keys.files }}"
+  loop_control:
+    label: "{{ item.path }}"
+
+# --- machine-id: regenerated on first boot (empty file = uninitialised) ---
+- name: Blank /etc/machine-id
+  ansible.builtin.copy:
+    content: ""
+    dest: /etc/machine-id
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Remove /var/lib/dbus/machine-id
+  ansible.builtin.file:
+    path: /var/lib/dbus/machine-id
+    state: absent
+
+# --- logs / caches / history ---
+- name: Clean the apt cache
+  ansible.builtin.command: apt-get clean
+  changed_when: true
+
+- name: Rotate and vacuum the journal
+  ansible.builtin.command: journalctl --rotate --vacuum-time=1s
+  changed_when: true
+  failed_when: false
+
+- name: Truncate all log files
+  ansible.builtin.shell: "find /var/log -type f -exec truncate -s 0 {} +"
+  changed_when: true
+
+- name: Find shell history files
+  ansible.builtin.find:
+    paths: [/root, /home]
+    patterns: ".bash_history"
+    hidden: true
+    recurse: true
+  register: image_histories
+
+- name: Remove shell history
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: absent
+  loop: "{{ image_histories.files }}"
+  loop_control:
+    label: "{{ item.path }}"
+
+- name: Power off so the box is ready to snapshot
+  ansible.builtin.command: systemctl poweroff
+  changed_when: true
+  when: image_generalize_poweroff

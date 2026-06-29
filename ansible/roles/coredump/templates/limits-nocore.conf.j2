@@ -1,0 +1,5 @@
+# {{ ansible_managed }}
+# Port of configs/coredump/limits-nocore.conf → /etc/security/limits.d/99-nocore.conf
+# Set the hard core-dump size limit to 0 for everyone (PAM-based sessions).
+*               hard    core            0
+root            hard    core            0

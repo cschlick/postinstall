@@ -1,0 +1,8 @@
+---
+- name: Converge
+  hosts: all
+  become: true
+  vars:
+    system_hostname: molecule-hostname-test
+  roles:
+    - role: hostname

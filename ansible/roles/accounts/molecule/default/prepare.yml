@@ -1,0 +1,20 @@
+---
+- name: Prepare
+  hosts: all
+  become: true
+  tasks:
+    # Seed the box so both paths have something real to do: linuxuser EXISTS
+    # (with a home dir, so we can prove the purge wipes it) and pmuser does NOT
+    # (so we can prove the role creates it).
+    - name: Create linuxuser (to be purged) with a home directory
+      ansible.builtin.user:
+        name: linuxuser
+        create_home: true
+        shell: /bin/bash
+
+    - name: Ensure pmuser does not exist yet
+      ansible.builtin.user:
+        name: pmuser
+        state: absent
+        remove: true
+        force: true

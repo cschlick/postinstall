@@ -1,0 +1,6 @@
+---
+# When false, render /etc/sysctl.d/99-custom.conf but DON'T run `sysctl --system`.
+# Used by the molecule docker scenario: kernel.* keys are not network-namespaced,
+# so applying them inside a privileged container would mutate the host kernel.
+# Real hosts leave this true.
+sysctl_apply: true

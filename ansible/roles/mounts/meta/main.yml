@@ -1,0 +1,12 @@
+---
+galaxy_info:
+  role_name: mounts
+  author: cschlick
+  description: Hardened tmpfs/bind mounts for /dev/shm, /tmp, /var/tmp (port of lib/mounts.py)
+  license: MIT
+  min_ansible_version: "2.15"
+  platforms:
+    - name: Debian
+      versions:
+        - trixie
+dependencies: []

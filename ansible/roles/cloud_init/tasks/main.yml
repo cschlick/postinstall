@@ -1,0 +1,32 @@
+---
+- name: Install cloud-init
+  ansible.builtin.apt:
+    name: cloud-init
+    state: present
+    update_cache: true
+
+- name: Configure cloud-init for the Vultr datasource
+  ansible.builtin.template:
+    src: 99-vultr-image.cfg.j2
+    dest: /etc/cloud/cloud.cfg.d/99-vultr-image.cfg
+    owner: root
+    group: root
+    mode: "0644"
+
+# A snapshot of this image must NOT carry the build box's "already provisioned"
+# marker, or deployed instances skip first-boot setup. image_generalize clears
+# it; ensure cloud-init isn't disabled here either.
+- name: Ensure cloud-init is not disabled
+  ansible.builtin.file:
+    path: /etc/cloud/cloud-init.disabled
+    state: absent
+
+- name: Enable the cloud-init services for first boot
+  ansible.builtin.systemd_service:
+    name: "{{ item }}"
+    enabled: true
+  loop:
+    - cloud-init-local.service
+    - cloud-init.service
+    - cloud-config.service
+    - cloud-final.service

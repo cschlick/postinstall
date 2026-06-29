@@ -1,0 +1,7 @@
+---
+# Rebuild the initramfs so the blacklist also covers modules pulled in early at
+# boot. Reboot to fully apply; already-loaded modules remain until then.
+- name: Rebuild initramfs
+  ansible.builtin.command: update-initramfs -u
+  changed_when: true
+  when: module_blacklist_apply

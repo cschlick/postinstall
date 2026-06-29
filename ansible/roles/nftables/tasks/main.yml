@@ -1,0 +1,22 @@
+---
+- name: Ensure nftables is installed
+  ansible.builtin.apt:
+    name: nftables
+    state: present
+    update_cache: true
+
+- name: Deploy the ruleset (validated before swap)
+  ansible.builtin.template:
+    src: nftables.conf.j2
+    dest: /etc/nftables.conf
+    owner: root
+    group: root
+    mode: "0644"
+    validate: "/usr/sbin/nft -c -f %s"
+  notify: Reload nftables
+
+- name: Enable and start nftables
+  ansible.builtin.service:
+    name: nftables
+    enabled: true
+    state: started

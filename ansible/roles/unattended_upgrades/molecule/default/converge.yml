@@ -1,0 +1,11 @@
+---
+- name: Converge
+  hosts: all
+  become: true
+  vars:
+    # Don't enable/start the service in the container; just prove the config
+    # renders. Exercise the "all" origins branch (security is the default).
+    unattended_upgrades_apply: false
+    unattended_upgrades_mode: all
+  roles:
+    - role: unattended_upgrades

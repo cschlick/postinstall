@@ -1,0 +1,36 @@
+---
+- name: Verify
+  hosts: all
+  become: true
+  tasks:
+    - name: Read /etc/fstab
+      ansible.builtin.slurp:
+        src: /etc/fstab
+      register: mounts_fstab_after
+
+    - name: Assert the hardened entries landed in fstab
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          - "'/dev/shm' in (mounts_fstab_after.content | b64decode)"
+          - "'/var/tmp' in (mounts_fstab_after.content | b64decode)"
+          - "'noexec,nosuid,nodev,size=2G' in (mounts_fstab_after.content | b64decode)"
+
+    - name: Read live mount options for /tmp and /dev/shm
+      ansible.builtin.command: "findmnt -no OPTIONS {{ item }}"
+      register: mounts_live
+      changed_when: false
+      loop:
+        - /tmp
+        - /dev/shm
+
+    - name: Assert /tmp and /dev/shm are mounted noexec/nosuid/nodev
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          - "'noexec' in item.stdout"
+          - "'nosuid' in item.stdout"
+          - "'nodev' in item.stdout"
+      loop: "{{ mounts_live.results }}"
+      loop_control:
+        label: "{{ item.item }}"

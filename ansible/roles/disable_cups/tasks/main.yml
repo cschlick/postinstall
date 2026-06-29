@@ -1,0 +1,16 @@
+---
+- name: Stop and disable the CUPS units (tolerate them being absent)
+  ansible.builtin.systemd_service:
+    name: "{{ item }}"
+    state: stopped
+    enabled: false
+  loop: "{{ disable_cups_units }}"
+  failed_when: false
+
+# `systemctl mask` works on absent units and leaves a /dev/null symlink that
+# survives a reinstall. `creates:` keeps it idempotent.
+- name: Mask the CUPS units
+  ansible.builtin.command: "systemctl mask {{ item }}"
+  args:
+    creates: "/etc/systemd/system/{{ item }}"
+  loop: "{{ disable_cups_units }}"

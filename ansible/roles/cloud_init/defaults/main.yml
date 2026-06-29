@@ -1,0 +1,11 @@
+---
+# Vultr datasource settings (cloud-init reads these from the metadata service on
+# first boot of each deployed instance).
+cloud_init_datasource_url: "http://169.254.169.254"
+cloud_init_datasource_retries: 3
+cloud_init_datasource_timeout: 2
+cloud_init_datasource_wait: 2
+
+# Host-key types cloud-init regenerates per instance — no NIST ECDSA, matching
+# the ssh role.
+cloud_init_ssh_genkeytypes: [ed25519, rsa]

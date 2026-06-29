@@ -1,0 +1,16 @@
+---
+- name: Prepare
+  hosts: all
+  become: true
+  tasks:
+    # Guarantee nullok is present on the pam_unix.so lines so the role's strip
+    # is actually exercised in both files (Debian ships it in common-auth but
+    # not always common-password). The negative lookahead keeps it idempotent.
+    - name: Ensure pam_unix.so lines carry nullok
+      ansible.builtin.replace:
+        path: "/etc/pam.d/{{ item }}"
+        regexp: '^(.*pam_unix\.so(?!.*\bnullok\b).*)$'
+        replace: '\1 nullok'
+      loop:
+        - common-auth
+        - common-password

@@ -1,0 +1,81 @@
+---
+- name: Ensure systemd-resolved is installed
+  ansible.builtin.apt:
+    name: systemd-resolved
+    state: present
+    update_cache: true
+
+- name: Ensure the resolved drop-in directory exists
+  ansible.builtin.file:
+    path: /etc/systemd/resolved.conf.d
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Disable LLMNR and MulticastDNS
+  ansible.builtin.template:
+    src: hardening.conf.j2
+    dest: /etc/systemd/resolved.conf.d/hardening.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart systemd-resolved
+
+- name: Configure split-DNS routing domains
+  ansible.builtin.template:
+    src: routing-domains.conf.j2
+    dest: /etc/systemd/resolved.conf.d/routing-domains.conf
+    owner: root
+    group: root
+    mode: "0644"
+  when: resolved_routing_domains | length > 0
+  notify: Restart systemd-resolved
+
+- name: Remove the routing-domains drop-in when none are configured
+  ansible.builtin.file:
+    path: /etc/systemd/resolved.conf.d/routing-domains.conf
+    state: absent
+  when: resolved_routing_domains | length == 0
+  notify: Restart systemd-resolved
+
+- name: Enable and start systemd-resolved
+  ansible.builtin.service:
+    name: systemd-resolved
+    enabled: true
+    state: started
+  when: resolved_apply
+
+# Point NSS at resolved's stub so glibc (and apt) resolve through it.
+- name: Point /etc/resolv.conf at the resolved stub
+  ansible.builtin.file:
+    src: /run/systemd/resolve/stub-resolv.conf
+    dest: /etc/resolv.conf
+    state: link
+    force: true
+  when: resolved_apply
+
+# resolved has no upstream until the network manager re-pushes it; if networkd
+# is the active manager, restart it so it hands the link's DNS back to resolved.
+- name: Gather service facts
+  ansible.builtin.service_facts:
+  when: resolved_apply
+
+- name: Restart systemd-networkd to re-push link DNS to resolved
+  ansible.builtin.service:
+    name: systemd-networkd
+    state: restarted
+  when:
+    - resolved_apply
+    - "'systemd-networkd.service' in ansible_facts.services"
+    - ansible_facts.services['systemd-networkd.service'].state == 'running'
+
+# Confirm resolution answers before any later role runs apt.
+- name: Wait for DNS resolution to recover
+  ansible.builtin.command: "getent hosts {{ resolved_dns_probe }}"
+  register: resolved_dns_check
+  until: resolved_dns_check.rc == 0
+  retries: 30
+  delay: 2
+  changed_when: false
+  when: resolved_apply

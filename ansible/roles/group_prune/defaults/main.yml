@@ -1,0 +1,11 @@
+---
+# Remove users from supplementary groups they don't need on a headless host —
+# shrinking what a compromised account can reach (peripherals, removable media,
+# audio/video, network management). Each entry pairs a user with the groups to
+# strip from it. Empty = no-op.
+#
+# Only the listed supplementary memberships are removed; a user's PRIMARY group
+# and any unlisted group are left alone — in particular this NEVER touches sudo.
+group_prune: []
+#  - user: deploy
+#    groups: [cdrom, floppy, audio, dip, video, plugdev, users, netdev]

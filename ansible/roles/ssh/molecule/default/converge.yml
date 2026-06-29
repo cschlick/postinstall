@@ -1,0 +1,8 @@
+---
+- name: Converge
+  hosts: all
+  become: true
+  vars:
+    ssh_allow_users: ["deploy"]   # prove templating of the AllowUsers list
+  roles:
+    - role: ssh

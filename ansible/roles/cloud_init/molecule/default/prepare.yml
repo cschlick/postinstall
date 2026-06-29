@@ -1,0 +1,16 @@
+---
+- name: Prepare
+  hosts: all
+  become: true
+  tasks:
+    # cloud-init's postinst tries to start its services on install; block that
+    # in the container (no metadata service to talk to).
+    - name: Install a policy-rc.d shim that blocks service auto-start
+      ansible.builtin.copy:
+        content: |
+          #!/bin/sh
+          exit 101
+        dest: /usr/sbin/policy-rc.d
+        owner: root
+        group: root
+        mode: "0755"

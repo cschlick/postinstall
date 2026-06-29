@@ -1,0 +1,9 @@
+# {{ ansible_managed }}
+# Split-DNS routing domains (port of configs/resolved/routing-domains.conf).
+# ~domain means "route this domain to the DNS below"; bare domain is a search
+# domain. Driven by the resolved_routing_domains / resolved_dns role vars.
+[Resolve]
+Domains={{ resolved_routing_domains | join(' ') }}
+{% if resolved_dns | length > 0 %}
+DNS={{ resolved_dns | join(' ') }}
+{% endif %}

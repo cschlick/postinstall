@@ -1,0 +1,35 @@
+---
+- name: Prepare
+  hosts: all
+  become: true
+  tasks:
+    # Stage the three things the role cleans up so verify can prove it acted:
+
+    # (1) a stale ipv6-disable modprobe line, plus an unrelated line that must survive
+    - name: Stage a stale ipv6-disable modprobe file
+      ansible.builtin.copy:
+        dest: /etc/modprobe.d/zz-ipv6-test.conf
+        content: |
+          options ipv6 disable=1
+          options other keep=1
+        owner: root
+        group: root
+        mode: "0644"
+
+    # (2) cloud-init's sshd drop-in
+    - name: Stage cloud-init's sshd drop-in
+      ansible.builtin.copy:
+        dest: /etc/ssh/sshd_config.d/50-cloud-init.conf
+        content: "PasswordAuthentication yes\n"
+        owner: root
+        group: root
+        mode: "0644"
+
+    # (3) an /etc/cloud dir so the optional disable step has somewhere to write
+    - name: Stage /etc/cloud
+      ansible.builtin.file:
+        path: /etc/cloud
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"

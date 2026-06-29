@@ -1,0 +1,12 @@
+---
+galaxy_info:
+  role_name: system_upgrade
+  author: cschlick
+  description: apt update + apt upgrade --with-new-pkgs (port of lib/sysupgrade.py)
+  license: MIT
+  min_ansible_version: "2.15"
+  platforms:
+    - name: Debian
+      versions:
+        - trixie
+dependencies: []

@@ -1,0 +1,8 @@
+---
+# `ansible.builtin.hostname` auto-selects the systemd strategy on Debian, i.e.
+# it drives hostnamectl just like lib/hostname.py. Skip entirely when unset so
+# the role never clobbers an existing hostname with an empty string.
+- name: Set the system hostname
+  ansible.builtin.hostname:
+    name: "{{ system_hostname }}"
+  when: system_hostname | length > 0

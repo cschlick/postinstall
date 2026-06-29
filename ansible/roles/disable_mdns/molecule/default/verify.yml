@@ -1,0 +1,26 @@
+---
+- name: Verify
+  hosts: all
+  become: true
+  tasks:
+    - name: Stat the avahi-daemon mask symlink
+      ansible.builtin.stat:
+        path: /etc/systemd/system/avahi-daemon.service
+      register: mdns_mask
+
+    - name: Assert avahi-daemon is masked to /dev/null
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          - mdns_mask.stat.exists
+          - mdns_mask.stat.islnk
+          - mdns_mask.stat.lnk_target == '/dev/null'
+
+    - name: Gather installed-package facts
+      ansible.builtin.package_facts:
+
+    - name: Assert avahi-daemon is not installed
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          - "'avahi-daemon' not in ansible_facts.packages"

@@ -1,0 +1,48 @@
+---
+- name: Verify
+  hosts: all
+  become: true
+  tasks:
+    - name: Stat the hardening drop-in
+      ansible.builtin.stat:
+        path: /etc/systemd/resolved.conf.d/hardening.conf
+      register: resolved_hardening_file
+
+    - name: Assert the hardening drop-in exists and is mode 0644
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          - resolved_hardening_file.stat.exists
+          - resolved_hardening_file.stat.mode == '0644'
+
+    - name: Read the hardening drop-in
+      ansible.builtin.slurp:
+        src: /etc/systemd/resolved.conf.d/hardening.conf
+      register: resolved_hardening
+
+    - name: Assert LLMNR and MulticastDNS are disabled
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          - "'LLMNR=no' in (resolved_hardening.content | b64decode)"
+          - "'MulticastDNS=no' in (resolved_hardening.content | b64decode)"
+
+    - name: Read the routing-domains drop-in
+      ansible.builtin.slurp:
+        src: /etc/systemd/resolved.conf.d/routing-domains.conf
+      register: resolved_routing
+
+    - name: Assert the routing-domains template rendered
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          - "'Domains=~corp.example' in (resolved_routing.content | b64decode)"
+          - "'DNS=10.0.0.1' in (resolved_routing.content | b64decode)"
+
+    - name: Confirm systemd-resolved is installed
+      ansible.builtin.package_facts:
+
+    - name: Assert systemd-resolved present
+      ansible.builtin.assert:
+        quiet: true
+        that: "'systemd-resolved' in ansible_facts.packages"

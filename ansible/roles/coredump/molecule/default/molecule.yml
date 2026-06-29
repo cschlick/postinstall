@@ -1,0 +1,27 @@
+---
+# Image is pre-built from roles/ssh/molecule/default/Dockerfile
+# (tag: molecule-trixie-systemd):
+#   docker build -t molecule-trixie-systemd ../../../ssh/molecule/default
+# Needs: pip install molecule "molecule-plugins[docker]" ansible; plus docker.
+role_name_check: 1
+driver:
+  name: docker
+platforms:
+  - name: coredump-trixie
+    image: molecule-trixie-systemd
+    pre_build_image: true
+    command: /lib/systemd/systemd
+    privileged: true
+    cgroupns_mode: host
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    tmpfs:
+      - /run
+      - /tmp
+provisioner:
+  name: ansible
+  env:
+    # Make the role under test resolvable (it lives at ../.. = roles/coredump).
+    ANSIBLE_ROLES_PATH: "${MOLECULE_PROJECT_DIRECTORY}/.."
+verifier:
+  name: ansible

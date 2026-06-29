@@ -1,0 +1,16 @@
+---
+# Accounts to ensure exist (idempotent: created if missing, left untouched if
+# already present). pmuser is the admin/automation account this playbook
+# connects as and that the ssh + group_prune roles configure, so it must exist
+# before them — this role runs early in site.yml for that reason.
+accounts_present:
+  - name: pmuser
+    groups: [sudo]
+    shell: /bin/bash
+    create_home: true
+
+# Accounts to FULLY purge if present: the user plus its home directory, mail
+# spool and (via userdel) its now-unused primary group. Any processes the user
+# is running are killed first so the removal can't be blocked or leave orphans.
+accounts_purge:
+  - linuxuser

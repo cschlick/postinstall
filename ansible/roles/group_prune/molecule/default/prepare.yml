@@ -1,0 +1,15 @@
+---
+- name: Prepare
+  hosts: all
+  become: true
+  tasks:
+    # A throwaway user placed in a couple of peripheral groups, so the role has
+    # a real membership to remove (and we can prove it did).
+    - name: Create a test user in some peripheral groups
+      ansible.builtin.user:
+        name: groptest
+        groups: [cdrom, audio]
+        append: true
+        create_home: false
+        shell: /usr/sbin/nologin
+        system: true

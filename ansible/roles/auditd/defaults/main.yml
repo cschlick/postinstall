@@ -1,0 +1,15 @@
+---
+# Append `-e 2` so the ruleset is immutable until reboot (root can't disable
+# auditing mid-incident). Leave false while iterating on rules.
+auditd_immutable: false
+
+# Audit log retention in /etc/audit/auditd.conf. ~10x the stock 8MB x 5: an
+# identity host generates real auth volume and rolls over fast otherwise.
+auditd_max_log_file: 32   # MB per log file
+auditd_num_logs: 10       # rotated files kept (~max_log_file * num_logs MB total)
+
+# When false, render the rule/conf files but DON'T enable/start auditd or load
+# rules into the kernel. The Linux audit subsystem is host-global (not
+# namespaced), so the molecule docker scenario sets this false to avoid mutating
+# the host's audit config. Real hosts leave it true.
+auditd_apply: true

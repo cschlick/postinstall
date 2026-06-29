@@ -1,0 +1,12 @@
+---
+galaxy_info:
+  role_name: sysctl
+  author: cschlick
+  description: Network/kernel sysctl hardening (port of postinstall lib/sysctl.py + configs/system/sysctl.conf)
+  license: MIT
+  min_ansible_version: "2.15"
+  platforms:
+    - name: Debian
+      versions:
+        - trixie
+dependencies: []

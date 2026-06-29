@@ -1,0 +1,13 @@
+---
+- name: Prepare
+  hosts: all
+  become: true
+  tasks:
+    # Pre-install a package that the role is set to purge, so the verify step
+    # proves purge: true actually removes an installed package (not just that
+    # an already-absent package stays absent).
+    - name: Pre-install wamerican (the role should purge it)
+      ansible.builtin.apt:
+        name: wamerican
+        state: present
+        update_cache: true

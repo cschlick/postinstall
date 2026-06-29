@@ -1,0 +1,13 @@
+---
+- name: Load audit rules
+  ansible.builtin.command: augenrules --load
+  changed_when: false
+  when: auditd_apply
+
+# auditd.service is Type=forking with no ExecReload, so `systemctl reload` is
+# invalid ("Job type reload is not applicable"). auditd re-reads auditd.conf on
+# SIGHUP — send that instead to pick up the retention changes.
+- name: Reload auditd
+  ansible.builtin.command: systemctl kill --signal=SIGHUP auditd
+  changed_when: true
+  when: auditd_apply

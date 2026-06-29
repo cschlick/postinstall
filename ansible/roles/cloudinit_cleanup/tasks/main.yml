@@ -1,0 +1,72 @@
+---
+# 1. Strip stale 'options ipv6 ... disable=1' modprobe lines.
+- name: Find modprobe.d config files
+  ansible.builtin.find:
+    paths: /etc/modprobe.d
+    patterns: "*.conf"
+  register: cloudinit_modprobe
+
+- name: Remove stale 'options ipv6 ... disable=1' lines
+  ansible.builtin.lineinfile:
+    path: "{{ item.path }}"
+    regexp: '^\s*options\s+ipv6\b.*\bdisable=1\b'
+    state: absent
+  loop: "{{ cloudinit_modprobe.files }}"
+  loop_control:
+    label: "{{ item.path }}"
+
+# 2. Remove cloud-init's sshd drop-in (it can re-assert PasswordAuthentication).
+#    The ssh role's 00-hardening.conf already wins, but deleting this stops it
+#    re-asserting outright.
+- name: Remove cloud-init's sshd drop-in
+  ansible.builtin.file:
+    path: /etc/ssh/sshd_config.d/50-cloud-init.conf
+    state: absent
+  register: cloudinit_sshd_dropin
+
+- name: Validate the sshd config after removing the drop-in
+  ansible.builtin.command: sshd -t
+  register: cloudinit_sshd_t
+  changed_when: false
+  failed_when: false
+  when:
+    - cloudinit_apply
+    - cloudinit_sshd_dropin.changed
+
+- name: Reload ssh so the removal takes effect
+  ansible.builtin.service:
+    name: ssh
+    state: reloaded
+  when:
+    - cloudinit_apply
+    - cloudinit_sshd_dropin.changed
+    - cloudinit_sshd_t.rc | default(1) == 0
+
+- name: Warn if sshd validation failed (ssh was NOT reloaded)
+  ansible.builtin.debug:
+    msg: >-
+      sshd -t failed after removing 50-cloud-init.conf; ssh was NOT reloaded.
+      Check the config before relying on it.
+  when:
+    - cloudinit_apply
+    - cloudinit_sshd_dropin.changed
+    - cloudinit_sshd_t.rc | default(0) != 0
+
+# 3. Optionally stop cloud-init running on future boots.
+- name: Stat /etc/cloud
+  ansible.builtin.stat:
+    path: /etc/cloud
+  register: cloudinit_dir
+
+- name: Disable cloud-init on future boots
+  ansible.builtin.copy:
+    dest: /etc/cloud/cloud-init.disabled
+    content: ""
+    owner: root
+    group: root
+    mode: "0644"
+    force: false
+  when:
+    - cloudinit_disable
+    - cloudinit_dir.stat.exists
+    - cloudinit_dir.stat.isdir

@@ -1,0 +1,9 @@
+---
+# Disable the CUPS printing stack on a headless host (port of lib/cups.py): stop,
+# disable and mask the print service, the browsing helper, AND the activation
+# socket — masking the service alone leaves cups.socket able to re-spawn it on
+# demand. No printers are served, so this removes a local/network surface.
+disable_cups_units:
+  - cups.service
+  - cups-browsed.service
+  - cups.socket

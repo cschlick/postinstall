@@ -1,0 +1,10 @@
+---
+# Headless module blacklist (port of lib/modules.py + the headless profile's
+# modprobe/blacklist-desktop.conf). Stops desktop/peripheral kernel modules
+# (audio, bluetooth, webcam, joystick) auto-loading — useless on a headless box
+# and extra kernel attack surface.
+
+# When false, write the blacklist file but DON'T rebuild the initramfs (host
+# kernel state; the molecule scenario sets this false). Either way, modules
+# already loaded in the running kernel stay until a reboot.
+module_blacklist_apply: true

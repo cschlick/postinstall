@@ -1,0 +1,10 @@
+---
+- name: Refresh the apt cache
+  ansible.builtin.apt:
+    update_cache: true
+
+# upgrade: safe == apt-get upgrade --with-new-pkgs (does not remove packages).
+- name: Upgrade installed packages
+  ansible.builtin.apt:
+    upgrade: safe
+  when: system_upgrade_apply

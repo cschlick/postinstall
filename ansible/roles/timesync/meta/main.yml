@@ -1,0 +1,12 @@
+---
+galaxy_info:
+  role_name: timesync
+  author: cschlick
+  description: Enable NTP time synchronisation via systemd-timesyncd
+  license: MIT
+  min_ansible_version: "2.15"
+  platforms:
+    - name: Debian
+      versions:
+        - trixie
+dependencies: []

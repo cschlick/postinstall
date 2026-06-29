@@ -1,0 +1,141 @@
+---
+# Packages to ensure installed — the common list from the repo's packages.txt.
+packages_install:
+  - curl
+  - wget
+  - git
+  - htop
+  - rsync
+  - dnsutils
+  - tcpdump
+  - cracklib-runtime
+
+# Packages to purge: ufw (replaced by nftables) plus the build toolchain, GPU/X
+# graphics stack, audio, docs, recon tooling and desktop/locale cruft that ships
+# on a default Debian and is pointless on a headless server. Entries that aren't
+# installed are skipped. fnmatch wildcards (e.g. libgl1*, libx11-*) are expanded
+# by the apt module against installed packages.
+packages_remove:
+  - ufw
+
+  # === build toolchain / dev headers (not needed at runtime) ===
+  - build-essential
+  - gcc
+  - g++
+  - cpp
+  - gcc-14
+  - g++-14
+  - cpp-14
+  - gcc-14-x86-64-linux-gnu
+  - g++-14-x86-64-linux-gnu
+  - cpp-14-x86-64-linux-gnu
+  - gcc-x86-64-linux-gnu
+  - g++-x86-64-linux-gnu
+  - cpp-x86-64-linux-gnu
+  - cmake
+  - cmake-data
+  - make
+  - dpkg-dev
+  - libc6-dev
+  - libc-dev-bin
+  - libstdc++-14-dev
+  - libgcc-14-dev
+  - libcrypt-dev
+  - linux-libc-dev
+  - manpages-dev
+  - libexpat1-dev
+  - libpython3-dev
+  - libpython3.13-dev
+  - python3-dev
+  - python3.13-dev
+  - pahole
+  - binutils
+  - pkgconf
+  - libblas-dev
+  - liblapack-dev
+  - libopenblas-dev
+
+  # === GPU / graphics / GL / Vulkan / Wayland / X (headless-safe) ===
+  - libgl1*
+  - libegl1*
+  - libgles*
+  - libglx*
+  - libglvnd*
+  - libopengl*
+  - libgl1-mesa-dri
+  - mesa-libgallium
+  - mesa-vulkan-drivers
+  - libvulkan1
+  - libdrm*
+  - libgbm1
+  - libwayland*
+  - libx11-*
+  - libx11-6
+  - libx11-data
+  - libxcb1
+  - libxcb-*
+  - libxext6
+  - libxau6
+  - libxdmcp6
+  - libxmuu1
+  - libxshmfence1
+  - libxxf86vm1
+  - xauth
+  - x11-common
+  - x11proto-dev
+  - xtrans-dev
+  - xorg-sgml-doctools
+  - libxau-dev
+  - libxcb1-dev
+  - libxdmcp-dev
+  - libegl-dev
+  - libgl-dev
+  - libgles-dev
+  - libglx-dev
+  - libglvnd-dev
+  - libglvnd-core-dev
+  - libopengl-dev
+  - libx11-dev
+  - xkb-data
+
+  # === audio stack ===
+  - libsndio*
+  - libpulse*
+  - libasound*
+
+  # === docs cruft ===
+  - debian-faq
+  - doc-debian
+
+  # === recon tooling (tcpdump/strace/netcat kept in the common list) ===
+  - nmap
+  - nmap-common
+  - inetutils-telnet
+
+  # === AppArmor bundled profiles ===
+  - apparmor-profiles
+  - apparmor-profiles-extra
+
+  # === spellcheck / dictionaries ===
+  # NOTE: removing dictionaries-common can trigger an interactive debconf prompt
+  # — watch this on unattended runs.
+  - iamerican
+  - ibritish
+  - ienglish-common
+  - ispell
+  - dictionaries-common
+  - emacsen-common
+  - wamerican
+
+  # === misc desktop / locale cruft ===
+  - shared-mime-info
+  - xdg-user-dirs
+  - util-linux-locales
+  - libglib2.0-data
+  - ncurses-term
+  - libsasl2-modules
+  - libldap-common
+  - publicsuffix
+
+# Disable apt Recommends/Suggests so installs stay minimal (/etc/apt/apt.conf.d).
+packages_no_recommends: true

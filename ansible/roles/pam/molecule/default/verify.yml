@@ -1,0 +1,41 @@
+---
+- name: Verify
+  hosts: all
+  become: true
+  tasks:
+    - name: Read the PAM stacks
+      ansible.builtin.slurp:
+        src: "/etc/pam.d/{{ item }}"
+      loop:
+        - common-auth
+        - common-password
+      register: pam_read
+
+    - name: Assert nullok was stripped but pam_unix.so remains
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          - "'nullok' not in (item.content | b64decode)"
+          - "'pam_unix.so' in (item.content | b64decode)"
+      loop: "{{ pam_read.results }}"
+      loop_control:
+        label: "{{ item.item }}"
+
+    - name: Read the faillock-affected files
+      ansible.builtin.slurp:
+        src: "{{ item }}"
+      loop:
+        - /etc/pam.d/common-auth
+        - /etc/pam.d/common-account
+        - /etc/security/faillock.conf
+      register: pam_faillock_read
+
+    - name: Assert pam_faillock is wired into the auth + account stacks, in order
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          # preauth → pam_unix → authfail → authsucc, in that order
+          - "(pam_faillock_read.results[0].content | b64decode) is search('faillock.so preauth[\\s\\S]*pam_unix.so[\\s\\S]*faillock.so authfail[\\s\\S]*faillock.so authsucc')"
+          - "'pam_faillock.so' in (pam_faillock_read.results[1].content | b64decode)"
+          - "'deny = 5' in (pam_faillock_read.results[2].content | b64decode)"
+          - "'unlock_time = 900' in (pam_faillock_read.results[2].content | b64decode)"

@@ -1,0 +1,48 @@
+---
+- name: Verify
+  hosts: all
+  become: true
+  tasks:
+    - name: Stat the three drop-ins
+      ansible.builtin.stat:
+        path: "{{ item }}"
+      loop:
+        - /etc/sysctl.d/99-coredump.conf
+        - /etc/security/limits.d/99-nocore.conf
+        - /etc/systemd/coredump.conf.d/disable.conf
+      register: coredump_files
+
+    - name: Assert all three exist and are mode 0644
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          - item.stat.exists
+          - item.stat.mode == '0644'
+      loop: "{{ coredump_files.results }}"
+      loop_control:
+        label: "{{ item.item }}"
+
+    - name: Read the sysctl drop-in
+      ansible.builtin.slurp:
+        src: /etc/sysctl.d/99-coredump.conf
+      register: coredump_sysctl
+
+    - name: Read the systemd-coredump drop-in
+      ansible.builtin.slurp:
+        src: /etc/systemd/coredump.conf.d/disable.conf
+      register: coredump_systemd
+
+    - name: Read the limits drop-in
+      ansible.builtin.slurp:
+        src: /etc/security/limits.d/99-nocore.conf
+      register: coredump_limits
+
+    - name: Assert the hardening content rendered
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          - "'fs.suid_dumpable = 0' in (coredump_sysctl.content | b64decode)"
+          - "'Storage=none' in (coredump_systemd.content | b64decode)"
+          - "'ProcessSizeMax=0' in (coredump_systemd.content | b64decode)"
+          - "'hard' in (coredump_limits.content | b64decode)"
+          - "'core' in (coredump_limits.content | b64decode)"

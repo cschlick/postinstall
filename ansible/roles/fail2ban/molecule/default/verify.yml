@@ -1,0 +1,32 @@
+---
+- name: Verify
+  hosts: all
+  become: true
+  tasks:
+    - name: Stat the jail config
+      ansible.builtin.stat:
+        path: /etc/fail2ban/jail.local
+      register: f2b_file
+
+    - name: Assert jail.local exists and is mode 0644
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          - f2b_file.stat.exists
+          - f2b_file.stat.mode == '0644'
+
+    - name: Read jail.local
+      ansible.builtin.slurp:
+        src: /etc/fail2ban/jail.local
+      register: f2b_conf
+
+    - name: Assert the jail and ban policy rendered
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          - "'[sshd]' in (f2b_conf.content | b64decode)"
+          - "'enabled = true' in (f2b_conf.content | b64decode)"
+          - "'backend   = systemd' in (f2b_conf.content | b64decode)"
+          - "'banaction          = nftables-multiport' in (f2b_conf.content | b64decode)"
+          # the converge ignoreip override was templated into the list
+          - "'192.168.0.0/24' in (f2b_conf.content | b64decode)"

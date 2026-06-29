@@ -1,0 +1,66 @@
+#!/usr/sbin/nft -f
+# {{ ansible_managed }}
+# nftables ruleset (port of configs/nftables/nftables.conf).
+# Edit the role vars (nftables_ssh_port, nftables_extra_tcp_ports), not this file.
+
+flush ruleset
+
+table inet filter {
+
+    chain input {
+        type filter hook input priority filter; policy drop;
+
+        # allow loopback
+        iif lo accept
+
+        # allow established/related
+        ct state established,related accept
+
+        # ICMPv4
+        ip protocol icmp icmp type {
+            echo-request,           # ping — allows others to reach this host
+            destination-unreachable, # tells sender a host/port/network can't be reached; needed for PMTUD
+            time-exceeded           # TTL expired in transit; required for traceroute to work
+        } accept
+
+        # ICMPv6 (essential types only)
+        # ICMPv6 is far more critical than ICMPv4 — IPv6 uses it for neighbour
+        # discovery (the ARP equivalent) and path MTU detection. Blocking it
+        # breaks IPv6 connectivity entirely, not just ping.
+        ip6 nexthdr icmpv6 icmpv6 type {
+            destination-unreachable, # host/port/network unreachable; needed for PMTUD
+            packet-too-big,          # path MTU discovery — tells sender to fragment; mandatory in IPv6
+            time-exceeded,           # TTL/hop-limit expired; needed for traceroute
+            parameter-problem,       # malformed IPv6 header; sender needs this to diagnose errors
+            echo-request,            # ping
+            echo-reply,              # ping reply
+            nd-neighbor-solicit,     # neighbour discovery — equivalent to ARP request; resolves IPv6 → MAC
+            nd-neighbor-advert,      # neighbour discovery — equivalent to ARP reply
+            nd-router-advert         # router sends network prefix and gateway info to hosts
+        } accept
+
+        # SSH — IPv6 only, by design (matches the original ruleset). No rate
+        # limit: an accept-side limiter fails INTO the drop policy past the
+        # threshold, locking out legitimate bursts/reconnects.
+        ip6 saddr ::/0 tcp dport {{ nftables_ssh_port }} ct state new accept
+
+{% for port in nftables_extra_tcp_ports %}
+        # Extra allowed inbound TCP (IPv4 and IPv6).
+        tcp dport {{ port }} ct state new accept
+{% endfor %}
+
+        # Log anything that reaches the end of the chain before the default
+        # drop policy takes it. Rate-limited so a flood can't fill the journal;
+        # view with: journalctl -k | grep 'nft-input-drop'
+        limit rate 3/second burst 10 packets log prefix "nft-input-drop: " level info counter
+
+    }
+
+    chain forward {
+        type filter hook forward priority filter; policy drop;
+    }
+
+    chain output {
+        type filter hook output priority filter; policy accept;
+    }
+}

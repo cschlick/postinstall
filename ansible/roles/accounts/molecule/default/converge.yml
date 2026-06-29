@@ -1,0 +1,7 @@
+---
+- name: Converge
+  hosts: all
+  become: true
+  # Exercise the role's real defaults: create pmuser, purge linuxuser.
+  roles:
+    - role: accounts

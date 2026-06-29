@@ -1,0 +1,20 @@
+---
+# PAM stacks to strip `nullok`/`nullok_secure` from (on pam_unix.so lines).
+# nullok lets an account with an empty password hash authenticate (or have one
+# set) — a latent backdoor with no upside. NOTE: a later pam-auth-update run
+# (e.g. a package reconfigure) can reintroduce nullok; re-run this role if so.
+pam_files:
+  - common-auth
+  - common-password
+
+# --- pam_faillock: lock accounts after repeated failed auths ---
+# Wires pam_faillock into common-auth/common-account (Debian ships no pam-config
+# for it). Covers the LOCAL path — console logins and sudo — that the SSH-side
+# controls (key-only, MaxAuthTries, fail2ban) don't throttle. NOTE: like the
+# nullok strip, a later pam-auth-update run can drop these lines; re-run if so.
+pam_faillock_enabled: true
+pam_faillock_deny: 5                 # lock after this many failures...
+pam_faillock_fail_interval: 900      # ...within this window (seconds)
+pam_faillock_unlock_time: 900        # auto-unlock after this long (seconds; 0 = until manual reset)
+pam_faillock_even_deny_root: false   # also lock root — off by default to avoid console lockout
+pam_faillock_audit: true             # log the offending user

@@ -1,0 +1,15 @@
+---
+- name: Verify
+  hosts: all
+  become: true
+  tasks:
+    - name: Read /etc/hostname
+      ansible.builtin.slurp:
+        src: /etc/hostname
+      register: hostname_file
+
+    - name: Assert the hostname was set
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          - "(hostname_file.content | b64decode).strip() == 'molecule-hostname-test'"

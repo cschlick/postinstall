@@ -1,0 +1,10 @@
+---
+- name: Converge
+  hosts: all
+  become: true
+  vars:
+    # A container has no kernel/initramfs of its own; don't run update-initramfs.
+    # Just prove the modprobe blacklist renders.
+    module_blacklist_apply: false
+  roles:
+    - role: module_blacklist

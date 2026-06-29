@@ -1,0 +1,67 @@
+---
+- name: Verify
+  hosts: all
+  become: true
+  tasks:
+    - name: Stat the networkd unit
+      ansible.builtin.stat:
+        path: /etc/systemd/network/10-ethernet.network
+      register: networkd_unit
+
+    - name: Assert the .network unit exists and is mode 0644
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          - networkd_unit.stat.exists
+          - networkd_unit.stat.mode == '0644'
+
+    - name: Read the .network unit
+      ansible.builtin.slurp:
+        src: /etc/systemd/network/10-ethernet.network
+      register: networkd_unit_body
+
+    - name: Assert the unit matches ethernet and uses DHCP
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          - "'Name=en*' in (networkd_unit_body.content | b64decode)"
+          - "'DHCP=yes' in (networkd_unit_body.content | b64decode)"
+          - "'IPv6PrivacyExtensions=no' in (networkd_unit_body.content | b64decode)"
+
+    - name: Read the rewritten /etc/network/interfaces
+      ansible.builtin.slurp:
+        src: /etc/network/interfaces
+      register: networkd_eni_body
+
+    - name: Assert interfaces is now a loopback-only stub (eth0 stanza gone)
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          - "'iface lo inet loopback' in (networkd_eni_body.content | b64decode)"
+          - "'eth0' not in (networkd_eni_body.content | b64decode)"
+
+    - name: Read the backup of the original interfaces
+      ansible.builtin.slurp:
+        src: /etc/network/interfaces.pre-networkd
+      register: networkd_eni_backup
+
+    - name: Assert the original (with eth0) was backed up
+      ansible.builtin.assert:
+        quiet: true
+        that: "'eth0' in (networkd_eni_backup.content | b64decode)"
+
+    - name: Stat the networking.service mask
+      ansible.builtin.stat:
+        path: /etc/systemd/system/networking.service
+      register: networkd_mask
+
+    - name: Assert networking.service is masked and systemd-networkd is enabled
+      ansible.builtin.service_facts:
+
+    - name: Assert mask symlink and networkd enablement
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          - networkd_mask.stat.islnk
+          - networkd_mask.stat.lnk_target == '/dev/null'
+          - ansible_facts.services['systemd-networkd.service'].status == 'enabled'

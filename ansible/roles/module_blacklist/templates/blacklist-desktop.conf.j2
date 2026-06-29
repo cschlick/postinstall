@@ -1,0 +1,42 @@
+# {{ ansible_managed }}
+# Headless module blacklist (port of configs/profiles/headless/modprobe/blacklist-desktop.conf).
+# Stops desktop/peripheral kernel modules from auto-loading at boot. Installed
+# to /etc/modprobe.d/blacklist-desktop.conf.
+#
+# This prevents future auto-loading; it does NOT unload modules already loaded
+# in the running kernel. The role rebuilds the initramfs; reboot to fully apply.
+
+# --- Audio (no use on a headless box) ---
+blacklist snd_hda_intel
+blacklist snd_hda_codec_generic
+blacklist snd_hda_codec
+blacklist snd_hda_core
+blacklist snd_pcm
+blacklist snd_timer
+blacklist snd_seq
+blacklist snd_seq_device
+blacklist snd
+blacklist soundcore
+blacklist pcspkr
+
+# --- Input peripherals ---
+blacklist joydev
+
+# --- Bluetooth ---
+blacklist bluetooth
+blacklist btusb
+
+# --- Webcam / video capture ---
+blacklist uvcvideo
+
+# --- GPU / DRM drivers ---
+# CAUTION: on a VPS/VM the "GPU" is the hypervisor's virtual adapter
+# (bochs / qxl / virtio_gpu / cirrus / vmwgfx). Blacklisting it blinds the
+# provider's emergency/VNC console — your recovery path if SSH ever breaks.
+# Only uncomment on bare-metal headless servers where you never need a local
+# graphical console.
+#blacklist i915
+#blacklist amdgpu
+#blacklist radeon
+#blacklist nouveau
+#blacklist vmwgfx

@@ -1,0 +1,115 @@
+---
+# ─────────────────────────── stage (no live link disruption) ───────────────
+- name: Ensure the networkd config directory exists
+  ansible.builtin.file:
+    path: /etc/systemd/network
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Install the ethernet .network unit
+  ansible.builtin.template:
+    src: 10-ethernet.network.j2
+    dest: /etc/systemd/network/10-ethernet.network
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Enable systemd-networkd (started during cutover / on next boot)
+  ansible.builtin.service:
+    name: systemd-networkd
+    enabled: true
+
+- name: Gather service facts
+  ansible.builtin.service_facts:
+
+# --- neutralise ifupdown so it won't fight networkd on the next boot ---
+- name: Stat /etc/network/interfaces
+  ansible.builtin.stat:
+    path: /etc/network/interfaces
+  register: networkd_eni
+
+- name: Back up the original /etc/network/interfaces
+  ansible.builtin.copy:
+    src: /etc/network/interfaces
+    dest: /etc/network/interfaces.pre-networkd
+    remote_src: true
+    force: false   # keep the first (real) backup; don't clobber it on re-runs
+    owner: root
+    group: root
+    mode: "0644"
+  when:
+    - networkd_disable_ifupdown
+    - networkd_eni.stat.exists
+
+- name: Replace /etc/network/interfaces with a loopback-only stub
+  ansible.builtin.copy:
+    dest: /etc/network/interfaces
+    content: |
+      # Managed by Ansible (networkd role). ifupdown is disabled; systemd-networkd
+      # manages interfaces via /etc/systemd/network/*.network. The original is at
+      # /etc/network/interfaces.pre-networkd.
+      auto lo
+      iface lo inet loopback
+    owner: root
+    group: root
+    mode: "0644"
+  when:
+    - networkd_disable_ifupdown
+    - networkd_eni.stat.exists
+
+- name: Disable and mask ifupdown networking.service
+  ansible.builtin.systemd_service:
+    name: networking
+    masked: true
+  when:
+    - networkd_disable_ifupdown
+    - "'networking.service' in ansible_facts.services"
+
+# ─────────────────────────── live cutover (gated) ──────────────────────────
+# Start networkd FIRST so it claims the link (same DHCP IP), THEN tear down
+# ifupdown — minimising the window where neither manager holds the interface.
+- name: Start systemd-networkd to take over the links
+  ansible.builtin.service:
+    name: systemd-networkd
+    state: restarted
+  when: networkd_apply
+
+- name: Stop ifupdown networking.service
+  ansible.builtin.systemd_service:
+    name: networking
+    state: stopped
+  when:
+    - networkd_apply
+    - networkd_disable_ifupdown
+    - "'networking.service' in ansible_facts.services"
+
+- name: Stop any running dhclient (ifupdown DHCP)
+  ansible.builtin.command: pkill -x dhclient
+  register: networkd_pkill
+  changed_when: networkd_pkill.rc == 0
+  failed_when: networkd_pkill.rc > 1
+  when:
+    - networkd_apply
+    - networkd_disable_ifupdown
+
+- name: Purge ifupdown and the ISC DHCP client
+  ansible.builtin.apt:
+    name:
+      - ifupdown
+      - isc-dhcp-client
+    state: absent
+    purge: true
+  when:
+    - networkd_apply
+    - networkd_purge_ifupdown
+
+- name: Wait for DNS to recover after the cutover
+  ansible.builtin.command: "getent hosts {{ networkd_dns_probe }}"
+  register: networkd_dns
+  until: networkd_dns.rc == 0
+  retries: 30
+  delay: 2
+  changed_when: false
+  when: networkd_apply

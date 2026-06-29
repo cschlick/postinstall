@@ -1,0 +1,20 @@
+---
+- name: Prepare
+  hosts: all
+  become: true
+  tasks:
+    - name: Stage cloud-init instance data
+      ansible.builtin.file:
+        path: /var/lib/cloud/instances/iid-test
+        state: directory
+        mode: "0755"
+
+    - name: Stage a shell history file
+      ansible.builtin.copy:
+        content: "a secret command\n"
+        dest: /root/.bash_history
+        mode: "0600"
+
+    - name: Ensure at least one SSH host key exists to remove
+      ansible.builtin.command: ssh-keygen -A
+      changed_when: false

@@ -1,0 +1,39 @@
+---
+# --- the .network unit (DHCP on all onboard ethernet), port of configs/networkd ---
+networkd_match_name: "en*"               # [Match] Name= (e.g. "enp3s0" for one NIC)
+networkd_dhcp: "yes"
+networkd_ipv6_accept_ra: "yes"
+# "no" = no rotating temporary addresses; keep only the stable SLAAC (EUI-64)
+# address so the host's IPv6 stays put — DNS/firewall/allowlist friendly. (Quote
+# it: a bare `no` is a YAML boolean.) Use "prefer-public" to add privacy
+# temporaries while still preferring the stable address outbound.
+networkd_ipv6_privacy: "no"
+# IPv6 interface-identifier generation for SLAAC addresses. "stable-privacy"
+# (RFC 7217) hashes prefix + interface + a per-host secret instead of using
+# EUI-64 — so the address stays stable (DNS/firewall/allowlist friendly) but no
+# longer embeds the NIC's MAC. systemd >= 257 auto-generates and persists the
+# secret; no IPv6StableSecretAddress= needed. Use "eui64" for the old
+# MAC-derived behaviour.
+networkd_ipv6_ll_addr_gen_mode: "stable-privacy"
+networkd_dhcp_route_metric: 100
+
+# --- transition away from ifupdown ---
+# Disable + mask networking.service and replace /etc/network/interfaces with a
+# loopback-only stub (the original is backed up to .pre-networkd). The interface
+# config swap and service mask are STAGING — they don't drop the live link, only
+# change what happens on the next boot / cutover.
+networkd_disable_ifupdown: true
+
+# Also purge ifupdown + isc-dhcp-client once networkd manages the link. Off by
+# default — disabling/masking the service is enough and fully reversible.
+networkd_purge_ifupdown: false
+
+# Probe host for the post-cutover DNS wait.
+networkd_dns_probe: deb.debian.org
+
+# When false, STAGE everything but DON'T perform the live cutover (start
+# networkd, stop networking.service, kill dhclient, wait for DNS). The molecule
+# scenario sets this false. On a real host the cutover briefly drops the link;
+# an established SSH session usually survives (DHCP returns the same IP), but a
+# reboot is the cleanest way to finalise the switch.
+networkd_apply: true

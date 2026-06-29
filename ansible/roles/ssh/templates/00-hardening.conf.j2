@@ -1,0 +1,8 @@
+{{ ansible_managed | comment }}
+# Sorts before 50-cloud-init.conf so these win (sshd uses the first value seen
+# for each keyword), even when a cloud image re-asserts them.
+PermitRootLogin {{ ssh_permit_root_login }}
+{% if ssh_password_authentication == 'no' %}
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+{% endif %}

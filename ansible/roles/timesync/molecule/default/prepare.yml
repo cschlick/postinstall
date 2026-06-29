@@ -1,0 +1,17 @@
+---
+- name: Prepare
+  hosts: all
+  become: true
+  tasks:
+    # systemd-timesyncd auto-starts on install and would try to discipline the
+    # host-global clock. policy-rc.d returning 101 makes invoke-rc.d skip the
+    # start during dpkg configure.
+    - name: Install a policy-rc.d shim that blocks service auto-start
+      ansible.builtin.copy:
+        content: |
+          #!/bin/sh
+          exit 101
+        dest: /usr/sbin/policy-rc.d
+        owner: root
+        group: root
+        mode: "0755"

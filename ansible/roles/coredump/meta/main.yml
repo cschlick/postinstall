@@ -1,0 +1,12 @@
+---
+galaxy_info:
+  role_name: coredump
+  author: cschlick
+  description: Disable core dumps via sysctl, limits and systemd-coredump (port of lib/coredump.py + configs/coredump)
+  license: MIT
+  min_ansible_version: "2.15"
+  platforms:
+    - name: Debian
+      versions:
+        - trixie
+dependencies: []

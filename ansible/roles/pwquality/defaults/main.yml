@@ -1,0 +1,11 @@
+---
+# libpwquality policy → /etc/security/pwquality.conf.d/99-hardening.conf.
+# Enforced by PAM at password-CHANGE time only (the pam role wires it in);
+# existing and chpasswd-set passwords are NOT retroactively checked.
+pwquality_minlen: 12          # minimum length
+pwquality_minclass: 3         # required char classes of 4 (lower/upper/digit/other)
+pwquality_maxrepeat: 3        # max identical consecutive chars (aaaa)
+pwquality_maxsequence: 3      # max monotonic sequence chars (abcd, 1234)
+pwquality_dictcheck: 1        # reject dictionary words
+pwquality_gecoscheck: 1       # reject values derived from GECOS/username
+pwquality_enforce_for_root: 1  # apply the policy to root's password changes too

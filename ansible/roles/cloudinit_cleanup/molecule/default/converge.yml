@@ -1,0 +1,11 @@
+---
+- name: Converge
+  hosts: all
+  become: true
+  vars:
+    # Don't validate/reload ssh live in the container; just prove the files are
+    # cleaned up. Exercise the optional cloud-init disable too.
+    cloudinit_apply: false
+    cloudinit_disable: true
+  roles:
+    - role: cloudinit_cleanup

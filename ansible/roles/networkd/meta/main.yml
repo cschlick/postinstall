@@ -1,0 +1,12 @@
+---
+galaxy_info:
+  role_name: networkd
+  author: cschlick
+  description: Transition ifupdown/dhclient to systemd-networkd with DHCP (port of lib/networkd.py)
+  license: MIT
+  min_ansible_version: "2.15"
+  platforms:
+    - name: Debian
+      versions:
+        - trixie
+dependencies: []

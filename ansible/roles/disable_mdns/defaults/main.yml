@@ -1,0 +1,9 @@
+---
+# Disable the Avahi mDNS/DNS-SD responder (port of lib/mdns.py): stop, disable
+# and mask the unit, then purge the package. Removes a network-facing
+# responder/spoofing surface. (The resolved role separately turns off
+# systemd-resolved's own LLMNR/mDNS.)
+
+# Also apt-purge avahi-daemon, not just mask it. Masking alone is enough to stop
+# it starting; purging removes the binary entirely.
+disable_mdns_purge: true

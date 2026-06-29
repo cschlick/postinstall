@@ -1,0 +1,19 @@
+# {{ ansible_managed }}
+# Password-quality policy (libpwquality) — port of configs/pwquality/99-hardening.conf.
+# Enforced by PAM at password-CHANGE time (interactive `passwd` and other PAM
+# password changes). It does NOT retroactively check existing passwords, nor
+# ones set via `chpasswd`. Edit the pwquality_* role vars, not this file.
+
+# At least {{ pwquality_minlen }} characters.
+minlen = {{ pwquality_minlen }}
+# Require at least {{ pwquality_minclass }} of the 4 character classes (lower/upper/digit/other).
+minclass = {{ pwquality_minclass }}
+# No more than {{ pwquality_maxrepeat }} identical consecutive characters (aaaa).
+maxrepeat = {{ pwquality_maxrepeat }}
+# No more than {{ pwquality_maxsequence }} monotonic sequence characters (abcd, 1234).
+maxsequence = {{ pwquality_maxsequence }}
+# Reject dictionary words and values derived from the GECOS/username.
+dictcheck = {{ pwquality_dictcheck }}
+gecoscheck = {{ pwquality_gecoscheck }}
+# Apply the policy to root's password changes too.
+enforce_for_root = {{ pwquality_enforce_for_root }}

@@ -1,0 +1,17 @@
+// {{ ansible_managed }}
+// Port of configs/unattended-upgrades/50unattended-upgrades-{{ unattended_upgrades_mode }}.
+Unattended-Upgrade::Origins-Pattern {
+    "origin=Debian,codename=${distro_codename}-security,label=Debian-Security";
+{% if unattended_upgrades_mode == 'all' %}
+    "origin=Debian,codename=${distro_codename},label=Debian";
+    "origin=Debian,codename=${distro_codename}-updates";
+{% endif %}
+};
+
+Unattended-Upgrade::AutoFixInterruptedDpkg "true";
+Unattended-Upgrade::MinimalSteps "true";
+Unattended-Upgrade::Remove-Unused-Dependencies "true";
+Unattended-Upgrade::Automatic-Reboot "{{ unattended_upgrades_automatic_reboot | ternary('true', 'false') }}";
+{% if unattended_upgrades_automatic_reboot %}
+Unattended-Upgrade::Automatic-Reboot-Time "{{ unattended_upgrades_reboot_time }}";
+{% endif %}

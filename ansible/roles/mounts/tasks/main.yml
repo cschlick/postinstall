@@ -1,0 +1,27 @@
+---
+- name: Read /etc/fstab
+  ansible.builtin.slurp:
+    src: /etc/fstab
+  register: mounts_fstab
+
+# Field 2 (mount point) of every real (non-comment, non-blank) fstab line.
+- name: Collect mount points already in fstab
+  ansible.builtin.set_fact:
+    mounts_existing: >-
+      {{ (mounts_fstab.content | b64decode).splitlines()
+         | map('regex_search', '^[^#\s]\S*\s+(\S+)', '\1')
+         | select('string') | list }}
+
+# state: mounted writes fstab AND mounts. Guarded so an existing fstab entry is
+# never modified (and so the second run is a no-op: the paths are now in fstab).
+- name: Add and mount hardened entries (skip mount points already in fstab)
+  ansible.posix.mount:
+    path: "{{ item.path }}"
+    src: "{{ item.src }}"
+    fstype: "{{ item.fstype }}"
+    opts: "{{ item.opts }}"
+    state: mounted
+  loop: "{{ mounts_hardened }}"
+  loop_control:
+    label: "{{ item.path }}"
+  when: item.path not in mounts_existing

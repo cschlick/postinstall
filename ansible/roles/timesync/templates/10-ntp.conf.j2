@@ -1,0 +1,5 @@
+# {{ ansible_managed }}
+# systemd-timesyncd upstream sources (timesync role).
+[Time]
+NTP={{ timesync_ntp_servers | join(' ') }}
+FallbackNTP={{ timesync_fallback_ntp_servers | join(' ') }}

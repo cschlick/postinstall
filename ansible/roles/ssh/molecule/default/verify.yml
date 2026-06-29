@@ -1,0 +1,55 @@
+---
+- name: Verify
+  hosts: all
+  become: true
+  tasks:
+    - name: Read the effective sshd config
+      ansible.builtin.command: sshd -T
+      register: ssh_sshd_t
+      changed_when: false
+
+    - name: Assert effective hardening is in place
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          - "'permitrootlogin no' in ssh_sshd_t.stdout_lines"
+          - "'debianbanner no' in ssh_sshd_t.stdout_lines"
+          - "'x11forwarding no' in ssh_sshd_t.stdout_lines"
+          - "'requiredrsasize 3072' in ssh_sshd_t.stdout_lines"
+          - "'allowusers deploy' in ssh_sshd_t.stdout_lines"
+          # IPv6-only listener (IPv4 blocked at the firewall)
+          - "'addressfamily inet6' in ssh_sshd_t.stdout_lines"
+          - "'listenaddress [::]:22' in ssh_sshd_t.stdout_lines"
+          # session hardening
+          - "'maxsessions 2' in ssh_sshd_t.stdout_lines"
+          - "'permituserrc no' in ssh_sshd_t.stdout_lines"
+          - "'compression no' in ssh_sshd_t.stdout_lines"
+          # forwarding fully disabled
+          - "'disableforwarding yes' in ssh_sshd_t.stdout_lines"
+          - "'allowtcpforwarding no' in ssh_sshd_t.stdout_lines"
+          - "'allowagentforwarding no' in ssh_sshd_t.stdout_lines"
+          - "'allowstreamlocalforwarding no' in ssh_sshd_t.stdout_lines"
+          # converge sets no ssh_authorized_keys, so the auto-default keeps
+          # password auth ON (you can't be locked out before you have a key).
+          - "'passwordauthentication yes' in ssh_sshd_t.stdout_lines"
+          - "'kbdinteractiveauthentication yes' in ssh_sshd_t.stdout_lines"
+
+    - name: Stat the main sshd_config
+      ansible.builtin.stat:
+        path: /etc/ssh/sshd_config
+      register: ssh_cfg
+
+    - name: Assert sshd_config is mode 0644 (not group-writable)
+      ansible.builtin.assert:
+        quiet: true
+        that: ssh_cfg.stat.mode == '0644'
+
+    - name: Stat the ECDSA host key
+      ansible.builtin.stat:
+        path: /etc/ssh/ssh_host_ecdsa_key
+      register: ssh_ecdsa
+
+    - name: Assert the ECDSA host key was removed
+      ansible.builtin.assert:
+        quiet: true
+        that: not ssh_ecdsa.stat.exists

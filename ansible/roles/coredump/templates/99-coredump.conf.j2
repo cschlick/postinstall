@@ -1,0 +1,7 @@
+# {{ ansible_managed }}
+# Port of configs/coredump/99-coredump.conf → /etc/sysctl.d/99-coredump.conf
+
+# Never dump core for setuid/setgid programs. A core dump from a privileged
+# binary can contain secrets (keys, hashes) and is written with the dumping
+# user's privileges, which has historically enabled privilege escalation.
+fs.suid_dumpable = 0

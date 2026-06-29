@@ -1,0 +1,9 @@
+---
+- name: Install the headless module blacklist
+  ansible.builtin.template:
+    src: blacklist-desktop.conf.j2
+    dest: /etc/modprobe.d/blacklist-desktop.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Rebuild initramfs

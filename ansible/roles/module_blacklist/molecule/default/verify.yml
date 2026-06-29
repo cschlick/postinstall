@@ -1,0 +1,33 @@
+---
+- name: Verify
+  hosts: all
+  become: true
+  tasks:
+    - name: Stat the modprobe blacklist
+      ansible.builtin.stat:
+        path: /etc/modprobe.d/blacklist-desktop.conf
+      register: blacklist_file
+
+    - name: Assert the blacklist exists and is mode 0644
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          - blacklist_file.stat.exists
+          - blacklist_file.stat.mode == '0644'
+
+    - name: Read the blacklist
+      ansible.builtin.slurp:
+        src: /etc/modprobe.d/blacklist-desktop.conf
+      register: blacklist
+
+    - name: Assert desktop/peripheral modules are blacklisted
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          - "'blacklist snd_hda_intel' in (blacklist.content | b64decode)"
+          - "'blacklist joydev' in (blacklist.content | b64decode)"
+          - "'blacklist bluetooth' in (blacklist.content | b64decode)"
+          - "'blacklist uvcvideo' in (blacklist.content | b64decode)"
+          # GPU/DRM drivers must stay COMMENTED so a VM's virtual console keeps working.
+          - "'#blacklist i915' in (blacklist.content | b64decode)"
+          - "'\nblacklist i915' not in (blacklist.content | b64decode)"

@@ -1,0 +1,5 @@
+---
+# When false, write the sysctl drop-in but DON'T run `sysctl --system`.
+# fs.suid_dumpable is not network-namespaced, so applying it in a privileged
+# container would mutate the host kernel. The molecule scenario sets this false.
+coredump_apply: true

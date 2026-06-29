@@ -1,0 +1,22 @@
+---
+# Hardened mount entries. Each is added to /etc/fstab and mounted ONLY if its
+# mount point isn't already present in fstab — existing entries are left alone,
+# matching lib/mounts.py. /var/tmp binds onto the hardened /tmp so it inherits
+# the same noexec/nosuid/nodev options.
+#
+# WARNING: /tmp becomes a RAM-backed tmpfs (cleared on reboot, capped at size=).
+# noexec on /tmp can break software that runs scripts from there (some
+# installers, a few package build steps). Tune or trim this list per box.
+mounts_hardened:
+  - path: /dev/shm
+    src: tmpfs
+    fstype: tmpfs
+    opts: defaults,noexec,nosuid,nodev
+  - path: /tmp
+    src: tmpfs
+    fstype: tmpfs
+    opts: defaults,noexec,nosuid,nodev,size=2G
+  - path: /var/tmp
+    src: /tmp
+    fstype: none
+    opts: bind

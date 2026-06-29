@@ -1,0 +1,50 @@
+---
+- name: Verify
+  hosts: all
+  become: true
+  tasks:
+    - name: Stat the two apt config files
+      ansible.builtin.stat:
+        path: "{{ item }}"
+      loop:
+        - /etc/apt/apt.conf.d/20auto-upgrades
+        - /etc/apt/apt.conf.d/50unattended-upgrades
+      register: uu_files
+
+    - name: Assert both exist and are mode 0644
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          - item.stat.exists
+          - item.stat.mode == '0644'
+      loop: "{{ uu_files.results }}"
+      loop_control:
+        label: "{{ item.item }}"
+
+    - name: Read 20auto-upgrades
+      ansible.builtin.slurp:
+        src: /etc/apt/apt.conf.d/20auto-upgrades
+      register: uu_periodic
+
+    - name: Read 50unattended-upgrades
+      ansible.builtin.slurp:
+        src: /etc/apt/apt.conf.d/50unattended-upgrades
+      register: uu_policy
+
+    - name: Assert the periodic schedule rendered
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          - "'APT::Periodic::Unattended-Upgrade \"1\";' in (uu_periodic.content | b64decode)"
+          - "'APT::Periodic::Update-Package-Lists \"1\";' in (uu_periodic.content | b64decode)"
+
+    - name: Assert the policy rendered with the 'all' origins branch
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          # The security origin is always present...
+          - "'-security,label=Debian-Security' in (uu_policy.content | b64decode)"
+          # ...and converge set mode=all, so the stable + updates origins appear too.
+          - "'codename=${distro_codename},label=Debian' in (uu_policy.content | b64decode)"
+          - "'codename=${distro_codename}-updates' in (uu_policy.content | b64decode)"
+          - "'Automatic-Reboot \"false\";' in (uu_policy.content | b64decode)"

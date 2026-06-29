@@ -1,0 +1,17 @@
+---
+- name: Prepare
+  hosts: all
+  become: true
+  tasks:
+    # Block the unattended-upgrades package postinst from starting the service
+    # during dpkg configure (the unit runs an actual upgrade pass, pointless in
+    # a throwaway container). policy-rc.d returning 101 makes invoke-rc.d skip it.
+    - name: Install a policy-rc.d shim that blocks service auto-start
+      ansible.builtin.copy:
+        content: |
+          #!/bin/sh
+          exit 101
+        dest: /usr/sbin/policy-rc.d
+        owner: root
+        group: root
+        mode: "0755"

@@ -1,0 +1,25 @@
+---
+# Boots Debian with systemd as PID 1 so the `reload ssh` handler works.
+# Needs: pip install molecule "molecule-plugins[docker]" ansible; plus docker.
+role_name_check: 1
+driver:
+  name: docker
+platforms:
+  - name: ssh-trixie
+    image: molecule-trixie-systemd   # pre-built from ./Dockerfile (see below)
+    pre_build_image: true            # use as-is; skip molecule's broken build task
+    command: /lib/systemd/systemd
+    privileged: true
+    cgroupns_mode: host
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    tmpfs:
+      - /run
+      - /tmp
+provisioner:
+  name: ansible
+  env:
+    # Make the role under test resolvable (it lives at ../.. = roles/ssh).
+    ANSIBLE_ROLES_PATH: "${MOLECULE_PROJECT_DIRECTORY}/.."
+verifier:
+  name: ansible

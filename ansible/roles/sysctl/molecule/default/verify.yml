@@ -1,0 +1,32 @@
+---
+- name: Verify
+  hosts: all
+  become: true
+  tasks:
+    - name: Stat the rendered sysctl drop-in
+      ansible.builtin.stat:
+        path: /etc/sysctl.d/99-custom.conf
+      register: sysctl_file
+
+    - name: Assert the drop-in exists and is mode 0644
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          - sysctl_file.stat.exists
+          - sysctl_file.stat.mode == '0644'
+
+    - name: Read the rendered drop-in
+      ansible.builtin.slurp:
+        src: /etc/sysctl.d/99-custom.conf
+      register: sysctl_content
+
+    - name: Assert key hardening lines and the per-interface block rendered
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          - "'kernel.kptr_restrict = 2' in (sysctl_content.content | b64decode)"
+          - "'net.ipv4.tcp_syncookies = 1' in (sysctl_content.content | b64decode)"
+          - "'kernel.unprivileged_userns_clone = 0' in (sysctl_content.content | b64decode)"
+          - "'kernel.io_uring_disabled = 2' in (sysctl_content.content | b64decode)"
+          # eth0 is the docker bridge interface; proves the ansible_interfaces loop.
+          - "'net.ipv4.conf.eth0.accept_redirects = 0' in (sysctl_content.content | b64decode)"

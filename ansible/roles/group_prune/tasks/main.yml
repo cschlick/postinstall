@@ -1,0 +1,18 @@
+---
+- name: Read the group database (so we only act on real memberships)
+  ansible.builtin.getent:
+    database: group
+  when: group_prune | length > 0
+
+# gpasswd -d errors if the user isn't a member, so gate each removal on the user
+# actually being in the group. The `when` makes this idempotent: a second run
+# finds nothing to remove and reports no change.
+- name: Remove each user from its unneeded supplementary groups
+  ansible.builtin.command: "gpasswd -d {{ item.0.user }} {{ item.1 }}"
+  loop: "{{ group_prune | subelements('groups', skip_missing=true) }}"
+  loop_control:
+    label: "{{ item.0.user }} ∉ {{ item.1 }}"
+  when:
+    - item.1 in ansible_facts.getent_group
+    - item.0.user in (ansible_facts.getent_group[item.1][2] | default('')).split(',')
+  changed_when: true

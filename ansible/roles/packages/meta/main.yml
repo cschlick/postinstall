@@ -1,0 +1,12 @@
+---
+galaxy_info:
+  role_name: packages
+  author: cschlick
+  description: Base package set, purge desktop/locale cruft, disable apt recommends (port of lib/packages.py)
+  license: MIT
+  min_ansible_version: "2.15"
+  platforms:
+    - name: Debian
+      versions:
+        - trixie
+dependencies: []

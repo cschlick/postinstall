@@ -1,0 +1,23 @@
+---
+- name: Install libpam-pwquality
+  ansible.builtin.apt:
+    name: libpam-pwquality
+    state: present
+    update_cache: true
+
+# The package ships this directory; ensure it anyway (script did mkdir -p).
+- name: Ensure the pwquality drop-in directory exists
+  ansible.builtin.file:
+    path: /etc/security/pwquality.conf.d
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Deploy the password-quality policy
+  ansible.builtin.template:
+    src: 99-hardening.conf.j2
+    dest: /etc/security/pwquality.conf.d/99-hardening.conf
+    owner: root
+    group: root
+    mode: "0644"

@@ -1,0 +1,24 @@
+---
+- name: Verify
+  hosts: all
+  become: true
+  tasks:
+    - name: Stat the CUPS mask symlinks
+      ansible.builtin.stat:
+        path: "/etc/systemd/system/{{ item }}"
+      loop:
+        - cups.service
+        - cups-browsed.service
+        - cups.socket
+      register: cups_masks
+
+    - name: Assert both units are masked to /dev/null
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          - item.stat.exists
+          - item.stat.islnk
+          - item.stat.lnk_target == '/dev/null'
+      loop: "{{ cups_masks.results }}"
+      loop_control:
+        label: "{{ item.item }}"

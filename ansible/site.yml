@@ -1,0 +1,68 @@
+---
+- name: Harden a headless Debian host
+  hosts: all
+  become: true
+  roles:
+    - role: hostname
+      tags: [hostname]
+    # Must precede ssh (installs pmuser's authorized_keys) and group_prune
+    # (prunes pmuser's groups): ensures pmuser exists, purges linuxuser.
+    - role: accounts
+      tags: [accounts, users]
+    - role: system_upgrade
+      tags: [system_upgrade, upgrade]
+    - role: ssh
+      tags: [ssh]
+    - role: sysctl
+      tags: [sysctl]
+    - role: nftables
+      tags: [nftables]
+    - role: packages
+      tags: [packages]
+    - role: auditd
+      tags: [auditd]
+    - role: pwquality
+      tags: [pwquality]
+    - role: pam
+      tags: [pam]
+    - role: group_prune
+      tags: [group_prune]
+    - role: networkd
+      tags: [networkd]
+    - role: resolved
+      tags: [resolved]
+    - role: coredump
+      tags: [coredump]
+    - role: mounts
+      tags: [mounts]
+    - role: unattended_upgrades
+      tags: [unattended_upgrades, upgrades]
+    - role: timesync
+      tags: [timesync]
+    - role: fail2ban
+      tags: [fail2ban]
+    - role: module_blacklist
+      tags: [module_blacklist, modules]
+    - role: disable_mdns
+      tags: [disable_mdns, mdns]
+    - role: disable_cups
+      tags: [disable_cups, cups]
+    # --- Vultr image build (only when image_build=true; IMAGE_BUILD=1 apply.sh) ---
+    - role: cloud_init
+      when: image_build | default(false)
+      tags: [cloud_init, image]
+    # Cloud-image cleanup: removes cloud-init's sshd drop-in, strips stale ipv6.
+    - role: cloudinit_cleanup
+      tags: [cloudinit_cleanup, cloudinit]
+    # image_generalize MUST stay last — it wipes host keys / machine-id /
+    # cloud-init state, leaving the box ready to snapshot.
+    - role: image_generalize
+      when: image_build | default(false)
+      tags: [image_generalize, image]
+    # The accounts role (above) now ensures pmuser exists and purges linuxuser.
+    # Still intentionally NOT ported (interactive / per-host provisioning, not
+    # headless hardening): user passwords, dotfiles, WireGuard, NFS mounts, and
+    # "disable root password".
+    #
+    # Run a subset with:  ansible-playbook site.yml --tags ssh,sysctl
+    # Skip the heavy one-off upgrade with:  ... --skip-tags system_upgrade

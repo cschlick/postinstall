@@ -1,0 +1,7 @@
+---
+# Inbound TCP port for SSH (always accepted, IPv4 and IPv6, new connections).
+nftables_ssh_port: 22
+
+# Extra inbound TCP ports to accept (IPv4 and IPv6). Empty on the headless
+# base; the old GUI profile is just: nftables_extra_tcp_ports: [3389]  # RDP
+nftables_extra_tcp_ports: []

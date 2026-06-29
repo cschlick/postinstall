@@ -1,0 +1,10 @@
+---
+- name: Converge
+  hosts: all
+  become: true
+  vars:
+    # The system clock is host-global; don't enable the service or run
+    # `timedatectl set-ntp` from the container. Just prove the drop-in renders.
+    timesync_apply: false
+  roles:
+    - role: timesync

@@ -1,0 +1,66 @@
+## {{ ansible_managed }}
+## auditd hardening ruleset (port of configs/audit/hardening.rules).
+## Installed to /etc/audit/rules.d/hardening.rules and compiled by augenrules.
+## A pragmatic baseline (loosely CIS-inspired) — tune to taste.
+
+# Start from a clean slate each load.
+-D
+
+# Audit backlog buffer. Bump on busy systems if you see "lost" events.
+-b 8192
+
+# Failure mode: 0=silent, 1=printk (log), 2=panic. 1 is the safe default.
+-f 1
+
+# Lock the audit loginuid once set, so a process can't relabel which user an
+# action is attributed to.
+--loginuid-immutable
+
+## ── Time changes ──────────────────────────────────────
+-a always,exit -F arch=b64 -S adjtimex,settimeofday,clock_settime -k time-change
+-a always,exit -F arch=b32 -S adjtimex,settimeofday,clock_settime -k time-change
+-w /etc/localtime -p wa -k time-change
+
+## ── User / group / account changes ────────────────────
+-w /etc/passwd -p wa -k identity
+-w /etc/group -p wa -k identity
+-w /etc/shadow -p wa -k identity
+-w /etc/gshadow -p wa -k identity
+-w /etc/sudoers -p wa -k identity
+-w /etc/sudoers.d/ -p wa -k identity
+
+## ── Login / session records ───────────────────────────
+-w /var/log/lastlog -p wa -k logins
+-w /var/log/faillog -p wa -k logins
+-w /var/run/utmp -p wa -k session
+-w /var/log/wtmp -p wa -k session
+-w /var/log/btmp -p wa -k session
+
+## ── Privilege escalation ──────────────────────────────
+-w /usr/bin/sudo -p x -k privilege
+-w /bin/su -p x -k privilege
+
+## ── Kernel module load/unload ─────────────────────────
+-a always,exit -F arch=b64 -S init_module,finit_module,delete_module -k modules
+-w /sbin/insmod -p x -k modules
+-w /sbin/rmmod -p x -k modules
+-w /sbin/modprobe -p x -k modules
+
+## ── Filesystem mounts by real users ───────────────────
+-a always,exit -F arch=b64 -S mount -F auid>=1000 -F auid!=4294967295 -k mounts
+
+## ── Network / DNS configuration ───────────────────────
+-w /etc/hosts -p wa -k network
+-w /etc/hostname -p wa -k network
+-w /etc/resolv.conf -p wa -k network
+-w /etc/systemd/network/ -p wa -k network
+
+## ── Service config of interest ────────────────────────
+-w /etc/ssh/sshd_config -p wa -k sshd
+-w /etc/nftables.conf -p wa -k firewall
+{% if auditd_immutable %}
+
+## Immutable until reboot (root can't disable auditing mid-incident). Must be
+## the LAST rule loaded.
+-e 2
+{% endif %}

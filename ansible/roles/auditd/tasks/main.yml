@@ -1,0 +1,39 @@
+---
+- name: Install auditd and the audit dispatcher plugins
+  ansible.builtin.apt:
+    name:
+      - auditd
+      - audispd-plugins
+    state: present
+    update_cache: true
+
+- name: Deploy the hardening ruleset
+  ansible.builtin.template:
+    src: hardening.rules.j2
+    dest: /etc/audit/rules.d/hardening.rules
+    owner: root
+    group: root
+    mode: "0600"
+  notify: Load audit rules
+
+# Replace-or-append each key, mirroring lib/auditd.py's in-place rewrite. The
+# regexp anchors on `key =` so e.g. max_log_file_action is left untouched.
+- name: Set audit log retention in auditd.conf
+  ansible.builtin.lineinfile:
+    path: /etc/audit/auditd.conf
+    regexp: "^\\s*{{ item.key }}\\s*="
+    line: "{{ item.key }} = {{ item.value }}"
+    state: present
+  loop:
+    - {key: max_log_file, value: "{{ auditd_max_log_file }}"}
+    - {key: num_logs, value: "{{ auditd_num_logs }}"}
+  loop_control:
+    label: "{{ item.key }}"
+  notify: Reload auditd
+
+- name: Enable and start auditd
+  ansible.builtin.service:
+    name: auditd
+    enabled: true
+    state: started
+  when: auditd_apply

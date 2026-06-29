@@ -1,0 +1,143 @@
+# {{ ansible_managed }}
+# Custom sysctl settings (port of configs/system/sysctl.conf).
+# Rendered by the sysctl role to /etc/sysctl.d/99-custom.conf
+
+# ── Network hardening ──────────────────────────────────
+
+# Disable IP forwarding — this machine is not a router.
+# If it were, packets arriving on one interface would be forwarded out another.
+net.ipv4.ip_forward = 0
+net.ipv6.conf.all.forwarding = 0
+
+# Ignore ICMP echo requests sent to broadcast addresses.
+# These are used in Smurf amplification attacks: a spoofed broadcast ping
+# causes every host on the network to reply to the victim simultaneously.
+net.ipv4.icmp_echo_ignore_broadcasts = 1
+
+# Ignore malformed ICMP error responses that violate RFC 1122.
+# Some routers send these incorrectly; accepting them can confuse the stack.
+net.ipv4.icmp_ignore_bogus_error_responses = 1
+
+# Reverse path filtering: drop incoming packets whose source address would not
+# be routed back out the same interface. This defeats IP spoofing — an attacker
+# faking a source address will fail the return-path check and be dropped.
+net.ipv4.conf.all.rp_filter = 1
+net.ipv4.conf.default.rp_filter = 1
+
+# Reject source-routed packets. Source routing lets the sender specify the
+# exact path a packet takes through the network, which can be used to bypass
+# firewalls or intercept traffic. Almost never legitimate on a modern host.
+net.ipv4.conf.all.accept_source_route = 0
+net.ipv4.conf.default.accept_source_route = 0
+net.ipv6.conf.all.accept_source_route = 0
+
+# Disable ICMP redirect acceptance and sending.
+# Redirects tell a host to use a different gateway — an attacker on the local
+# network can send a fake redirect to reroute traffic through their machine
+# (man-in-the-middle). send_redirects is also off: we are not a router.
+net.ipv4.conf.all.accept_redirects = 0
+net.ipv4.conf.default.accept_redirects = 0
+net.ipv6.conf.all.accept_redirects = 0
+net.ipv4.conf.all.send_redirects = 0
+net.ipv4.conf.default.send_redirects = 0
+
+# secure_redirects only accepts redirects from the current default gateways.
+# We reject all redirects anyway (accept_redirects=0), so disable the "secure"
+# subset too rather than depend on it.
+net.ipv4.conf.all.secure_redirects = 0
+net.ipv4.conf.default.secure_redirects = 0
+
+# SYN cookies: defend against SYN flood attacks.
+# In a SYN flood, an attacker sends masses of TCP SYN packets to exhaust the
+# connection table. With SYN cookies the kernel encodes state in the sequence
+# number and allocates no resources until the full handshake completes.
+net.ipv4.tcp_syncookies = 1
+
+# Log packets with impossible (martian) source addresses, e.g. a packet
+# arriving from the internet claiming to originate from 192.168.x.x.
+# Useful for spotting spoofing attempts or misconfigured upstream routers.
+net.ipv4.conf.all.log_martians = 1
+
+# ── Kernel hardening ───────────────────────────────────
+
+# Hide kernel symbol addresses from all users, including root.
+# Value 2 = always hidden. Kernel pointer leaks are a common first step in
+# local privilege escalation: knowing where kernel code lives defeats ASLR.
+kernel.kptr_restrict = 2
+
+# Restrict dmesg output to root only.
+# The kernel log frequently contains memory addresses and hardware details
+# that help an attacker fingerprint the system or locate exploit targets.
+kernel.dmesg_restrict = 1
+
+# Disable the magic SysRq key.
+# SysRq allows low-level kernel commands (reboot, sync, kill all processes)
+# via keyboard or serial console. No legitimate use on a headless server.
+kernel.sysrq = 0
+
+# Disable kexec — loading a new kernel image at runtime is an anti-forensics /
+# persistence primitive (boot a tampered kernel without a real reboot). One-way
+# until reboot. NOTE: this also disables kdump crash dumps and kexec fast
+# reboots; comment out if you rely on those.
+kernel.kexec_load_disabled = 1
+
+# Restrict ptrace to parent processes only (Yama LSM).
+# By default any process can attach to and inspect any other process owned
+# by the same user. Scope 1 limits ptrace to a process's own children,
+# blocking attacks where malware attaches to a running process (e.g. an
+# ssh-agent or password manager) to extract secrets from its memory.
+kernel.yama.ptrace_scope = 1
+
+# Disable loading of eBPF programs by unprivileged users. The in-kernel eBPF
+# verifier is complex and has been a recurring source of local privilege
+# escalation bugs; restrict the attack surface to root only.
+kernel.unprivileged_bpf_disabled = 1
+
+# Harden the eBPF JIT compiler with constant blinding, which defeats JIT
+# spraying — a technique that smuggles attacker-controlled machine code into
+# the kernel via crafted eBPF constants.
+net.core.bpf_jit_harden = 2
+
+# Disallow unprivileged user namespaces — a recurring local-privilege-
+# escalation primitive (they hand a lot of kernel surface to non-root). Set to
+# 0 for consistency with the eBPF restriction above. NOTE: unprivileged
+# container/sandbox tooling (rootless podman/lxc, Chrome/bubblewrap sandboxes)
+# needs this ON — set back to 1 if this box runs any of that.
+kernel.unprivileged_userns_clone = 0
+
+# Disable io_uring. It's a powerful asynchronous I/O interface with a large,
+# fast-moving kernel attack surface that has been a recurring source of
+# privilege-escalation bugs (Google disables it for Android/ChromeOS and on
+# production servers). Value 2 = fully disabled for all processes; 1 = allowed
+# only for kernel.io_uring_group, and -1 means no group qualifies (belt-and-
+# suspenders if you ever relax to 1). Requires kernel ≥ 6.6 (a harmless unknown
+# key on older ones). Set io_uring_disabled = 0 if a workload ever needs it.
+kernel.io_uring_disabled = 2
+kernel.io_uring_group = -1
+
+# ── More network hardening ─────────────────────────────
+
+# Protect against TIME-WAIT assassination (RFC 1337). An attacker can inject
+# an old duplicate segment to prematurely tear down a connection in TIME-WAIT;
+# this makes the stack drop such RST packets instead.
+net.ipv4.tcp_rfc1337 = 1
+
+# IPv6 parity with the IPv4 redirect/source-route rules above. The earlier
+# block only covered conf.all and a couple of v6 keys; set the default policy
+# too so newly appearing interfaces inherit the hardened settings.
+net.ipv6.conf.default.accept_redirects = 0
+net.ipv6.conf.default.accept_source_route = 0
+
+# ── Per-interface redirect hardening (rendered at apply time) ──────────
+# These keys are per-interface: the global all/default values do not override a
+# value already set on a live interface (e.g. a cloud provider's drop-in setting
+# accept_ra=2 re-enables redirect acceptance on the public NIC). Pin them off per
+# interface; this 99- file sorts after the provider's. VLAN names (containing
+# '.') are skipped — the dot collides with the key separator. send_redirects and
+# secure_redirects are IPv4-only, so they have no IPv6 counterpart.
+{% for ifn in ansible_interfaces | reject('equalto', 'lo') | reject('search', '[.]') | sort %}
+net.ipv4.conf.{{ ifn }}.accept_redirects = 0
+net.ipv4.conf.{{ ifn }}.send_redirects = 0
+net.ipv4.conf.{{ ifn }}.secure_redirects = 0
+net.ipv6.conf.{{ ifn }}.accept_redirects = 0
+{% endfor %}

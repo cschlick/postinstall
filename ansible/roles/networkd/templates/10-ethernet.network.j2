@@ -1,0 +1,16 @@
+# {{ ansible_managed }}
+# Port of configs/networkd/10-ethernet.network → /etc/systemd/network/
+[Match]
+Name={{ networkd_match_name }}
+
+[Network]
+DHCP={{ networkd_dhcp }}
+IPv6AcceptRA={{ networkd_ipv6_accept_ra }}
+IPv6PrivacyExtensions={{ networkd_ipv6_privacy }}
+IPv6LinkLocalAddressGenerationMode={{ networkd_ipv6_ll_addr_gen_mode }}
+
+[DHCPv4]
+RouteMetric={{ networkd_dhcp_route_metric }}
+
+[DHCPv6]
+RouteMetric={{ networkd_dhcp_route_metric }}

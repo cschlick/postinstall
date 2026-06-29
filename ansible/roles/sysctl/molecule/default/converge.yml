@@ -1,0 +1,11 @@
+---
+- name: Converge
+  hosts: all
+  become: true
+  vars:
+    # Don't run `sysctl --system`: kernel.* keys aren't net-namespaced and
+    # would mutate the host kernel from this privileged container. We verify
+    # the rendered file instead.
+    sysctl_apply: false
+  roles:
+    - role: sysctl

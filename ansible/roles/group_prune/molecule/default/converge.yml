@@ -1,0 +1,12 @@
+---
+- name: Converge
+  hosts: all
+  become: true
+  vars:
+    group_prune:
+      - user: groptest
+        # floppy is included on purpose — groptest isn't in it, proving the
+        # role skips non-memberships instead of erroring.
+        groups: [cdrom, audio, floppy]
+  roles:
+    - role: group_prune

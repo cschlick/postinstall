@@ -1,0 +1,9 @@
+---
+- name: Converge
+  hosts: all
+  become: true
+  vars:
+    # Stage only — the live cutover would sever the container's docker network.
+    networkd_apply: false
+  roles:
+    - role: networkd

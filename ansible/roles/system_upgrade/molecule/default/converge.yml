@@ -1,0 +1,10 @@
+---
+- name: Converge
+  hosts: all
+  become: true
+  vars:
+    # Refresh the cache but don't run a full upgrade in the container — slow and
+    # pointless for a throwaway. This still exercises the update_cache task.
+    system_upgrade_apply: false
+  roles:
+    - role: system_upgrade

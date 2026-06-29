@@ -1,0 +1,33 @@
+---
+- name: Verify
+  hosts: all
+  become: true
+  tasks:
+    - name: Read the staged modprobe file
+      ansible.builtin.slurp:
+        src: /etc/modprobe.d/zz-ipv6-test.conf
+      register: ci_modprobe
+
+    - name: Assert the ipv6-disable line was stripped but the rest survived
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          - "'disable=1' not in (ci_modprobe.content | b64decode)"
+          - "'options other keep=1' in (ci_modprobe.content | b64decode)"
+
+    - name: Stat cloud-init's sshd drop-in
+      ansible.builtin.stat:
+        path: /etc/ssh/sshd_config.d/50-cloud-init.conf
+      register: ci_dropin
+
+    - name: Stat the cloud-init disable marker
+      ansible.builtin.stat:
+        path: /etc/cloud/cloud-init.disabled
+      register: ci_disabled
+
+    - name: Assert the drop-in is gone and cloud-init is disabled
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          - not ci_dropin.stat.exists
+          - ci_disabled.stat.exists

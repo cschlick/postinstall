@@ -1,0 +1,55 @@
+{{ ansible_managed | comment }}
+# Hardened sshd_config for Debian (role: ssh).
+
+Include /etc/ssh/sshd_config.d/*.conf
+
+Port {{ ssh_port }}
+# IPv6-only; IPv4 is blocked at the firewall (no 0.0.0.0:22 listener).
+AddressFamily inet6
+ListenAddress ::
+
+# Offer only Ed25519 and RSA host keys (no NIST ECDSA; see algorithms below).
+HostKey /etc/ssh/ssh_host_ed25519_key
+HostKey /etc/ssh/ssh_host_rsa_key
+
+# Authentication
+PermitRootLogin {{ ssh_permit_root_login }}
+PasswordAuthentication {{ ssh_password_authentication }}
+KbdInteractiveAuthentication {{ ssh_password_authentication }}
+PubkeyAuthentication yes
+AuthorizedKeysFile .ssh/authorized_keys
+UsePAM yes
+RequiredRSASize {{ ssh_required_rsa_size }}
+{% if ssh_allow_users | length > 0 %}
+AllowUsers {{ ssh_allow_users | join(' ') }}
+{% endif %}
+
+# Session hardening
+LoginGraceTime 30
+MaxAuthTries 3
+MaxSessions 2
+PermitUserRC no
+Compression no
+
+# Disable unused features
+X11Forwarding no
+AllowTcpForwarding no
+AllowAgentForwarding no
+AllowStreamLocalForwarding no
+DisableForwarding yes
+PermitOpen none
+PermitListen none
+PermitTunnel no
+PrintMotd no
+DebianBanner no
+
+# Strong algorithms only; drop NIST ECDSA (- prefix removes from the default set)
+KexAlgorithms curve25519-sha256,curve25519-sha256@libssh.org
+Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com
+MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com
+PubkeyAcceptedAlgorithms -ecdsa-sha2-nistp256,-ecdsa-sha2-nistp384,-ecdsa-sha2-nistp521
+HostKeyAlgorithms -ecdsa-sha2-nistp256,-ecdsa-sha2-nistp384,-ecdsa-sha2-nistp521
+
+LogLevel VERBOSE
+ClientAliveInterval 300
+ClientAliveCountMax 2

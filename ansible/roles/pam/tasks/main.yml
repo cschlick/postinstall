@@ -1,0 +1,64 @@
+---
+- name: Stat the PAM stacks
+  ansible.builtin.stat:
+    path: "/etc/pam.d/{{ item }}"
+  loop: "{{ pam_files }}"
+  register: pam_stat
+
+# Remove the nullok/nullok_secure argument from pam_unix.so lines only. The
+# non-greedy capture keeps the rest of the line; idempotent once stripped.
+- name: Strip nullok from pam_unix.so lines
+  ansible.builtin.replace:
+    path: "{{ item.stat.path }}"
+    regexp: '(pam_unix\.so.*?)\s+\bnullok\w*\b'
+    replace: '\1'
+  loop: "{{ pam_stat.results }}"
+  loop_control:
+    label: "{{ item.item }}"
+  when: item.stat.exists
+
+# --- pam_faillock: brute-force lockout on the local (console/sudo) path ---
+- name: Deploy the faillock policy
+  ansible.builtin.template:
+    src: faillock.conf.j2
+    dest: /etc/security/faillock.conf
+    owner: root
+    group: root
+    mode: "0644"
+  when: pam_faillock_enabled
+
+# Wire pam_faillock around pam_unix in common-auth. Order is deliberate: preauth
+# before pam_unix; authfail immediately after it (so pam_unix's `success=1` skips
+# authfail and lands on authsucc); authsucc after authfail. Each line is matched
+# verbatim, so re-runs are idempotent.
+- name: faillock — preauth before pam_unix (common-auth)
+  ansible.builtin.lineinfile:
+    path: /etc/pam.d/common-auth
+    line: "auth required pam_faillock.so preauth"
+    insertbefore: '^auth\s+\[success=1 default=ignore\]\s+pam_unix\.so'
+    firstmatch: true
+  when: pam_faillock_enabled
+
+- name: faillock — authfail after pam_unix (common-auth)
+  ansible.builtin.lineinfile:
+    path: /etc/pam.d/common-auth
+    line: "auth [default=die] pam_faillock.so authfail"
+    insertafter: '^auth\s+\[success=1 default=ignore\]\s+pam_unix\.so'
+    firstmatch: true
+  when: pam_faillock_enabled
+
+- name: faillock — authsucc after authfail (common-auth)
+  ansible.builtin.lineinfile:
+    path: /etc/pam.d/common-auth
+    line: "auth sufficient pam_faillock.so authsucc"
+    insertafter: '^auth\s+\[default=die\]\s+pam_faillock\.so authfail'
+    firstmatch: true
+  when: pam_faillock_enabled
+
+- name: faillock — account entry (common-account)
+  ansible.builtin.lineinfile:
+    path: /etc/pam.d/common-account
+    line: "account required pam_faillock.so"
+    insertbefore: '^account\s+\[.*\]\s+pam_unix\.so'
+    firstmatch: true
+  when: pam_faillock_enabled

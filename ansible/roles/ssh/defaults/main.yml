@@ -1,0 +1,23 @@
+---
+ssh_port: 22
+ssh_permit_root_login: "no"
+# Password auth turns OFF automatically once at least one key is present in
+# ssh_authorized_keys; until then it stays ON so you can't be locked out. Set
+# this explicitly to "yes" or "no" to override the automatic behaviour.
+ssh_password_authentication: "{{ 'no' if ssh_authorized_keys | length > 0 else 'yes' }}"
+ssh_allow_users: []                  # e.g. ["deploy"]; empty -> no AllowUsers line
+ssh_required_rsa_size: 3072
+ssh_drop_ecdsa_hostkey: true
+ssh_disable_cloudinit_pwauth: true   # when passwords are off, set cloud-init ssh_pwauth: false
+
+# Public keys to install. Each value is one key string OR a list of key strings:
+#   { deploy: "ssh-ed25519 AAAA... comment" }
+#   { deploy: ["ssh-ed25519 AAAA... old", "ssh-ed25519 BBBB... new"] }
+ssh_authorized_keys: {}
+
+# When true, each listed user's authorized_keys is made EXACTLY the listed
+# key(s) — anything else is removed. This is what enables key ROTATION: replace
+# a user's key here and re-run with this on to drop the old key. Default false
+# (additive — routine runs never remove a key by surprise); turn it on only for
+# a deliberate rotation, e.g. -e ssh_authorized_keys_exclusive=true.
+ssh_authorized_keys_exclusive: false

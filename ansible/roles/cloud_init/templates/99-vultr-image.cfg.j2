@@ -1,0 +1,39 @@
+## {{ ansible_managed }}
+## Vultr image config (cloud_init role). Consumed on first boot of each instance
+## deployed from a snapshot of this image.
+
+# Use only the Vultr metadata service — no datasource probing.
+datasource_list: [ Vultr, None ]
+datasource:
+  Vultr:
+    url: '{{ cloud_init_datasource_url }}'
+    retries: {{ cloud_init_datasource_retries }}
+    timeout: {{ cloud_init_datasource_timeout }}
+    wait: {{ cloud_init_datasource_wait }}
+
+# Networking is baked in via systemd-networkd (DHCP on en*); cloud-init must not
+# touch it. (Vultr assigns the primary IPv4 over DHCP, so this Just Works.)
+network: {config: disabled}
+
+# The pmuser account + authorized key are baked into the image (ssh role), so
+# cloud-init must NOT create a distro default user, enable password auth, or take
+# over root. The SSH key chosen in the Vultr panel is therefore ignored.
+users: []
+disable_root: true
+ssh_pwauth: false
+
+# Host keys are wiped at build time (image_generalize); regenerate them per
+# instance, keeping only the types the ssh role offers (no NIST ECDSA).
+ssh_deletekeys: true
+ssh_genkeytypes: [{{ cloud_init_ssh_genkeytypes | join(', ') }}]
+
+# Still let cloud-init own the per-instance hostname and grow the root fs.
+preserve_hostname: false
+
+# Grow the root partition + filesystem to fill the disk on first boot. These are
+# cloud-init defaults, but assert them explicitly so a base-image change can't
+# silently drop them.
+growpart:
+  mode: auto
+  devices: ['/']
+resize_rootfs: true

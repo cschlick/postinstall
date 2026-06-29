@@ -1,0 +1,18 @@
+# {{ ansible_managed }}
+# fail2ban jail config (fail2ban role). Local override of /etc/fail2ban/jail.conf.
+# Edit the fail2ban_* role vars, not this file.
+
+[DEFAULT]
+backend   = {{ fail2ban_backend }}
+bantime   = {{ fail2ban_bantime }}
+findtime  = {{ fail2ban_findtime }}
+maxretry  = {{ fail2ban_maxretry }}
+ignoreip  = {{ fail2ban_ignoreip | join(' ') }}
+
+# Ban via nftables (this host's firewall), not iptables.
+banaction          = {{ fail2ban_banaction }}
+banaction_allports = {{ fail2ban_banaction_allports }}
+
+[sshd]
+enabled = true
+port    = {{ fail2ban_ssh_port }}

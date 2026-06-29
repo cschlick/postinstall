@@ -1,0 +1,5 @@
+---
+# Hostname to set via the systemd hostname backend (hostnamectl). Empty leaves
+# the hostname unchanged, so the role is a safe no-op when unset. Set it per
+# host in host_vars/<name>.yml (or group_vars).
+system_hostname: ""

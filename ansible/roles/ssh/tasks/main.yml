@@ -1,0 +1,88 @@
+---
+- name: Ensure openssh-server is installed
+  ansible.builtin.apt:
+    name: openssh-server
+    state: present
+    update_cache: true
+
+- name: Generate any missing host keys
+  ansible.builtin.command: ssh-keygen -A
+  args:
+    creates: /etc/ssh/ssh_host_ed25519_key
+
+- name: Remove the unused ECDSA host key
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /etc/ssh/ssh_host_ecdsa_key
+    - /etc/ssh/ssh_host_ecdsa_key.pub
+  when: ssh_drop_ecdsa_hostkey
+
+# Catch the common mistake of putting the public key on the wrong side (the map
+# is { "<unix-user>": "<public key(s)>" }), which otherwise fails deep in the
+# authorized_key module with a cryptic getpwnam() error. Each value may be one
+# key string or a list of them; every entry must look like a public key.
+- name: Validate ssh_authorized_keys maps a unix user to public key(s)
+  ansible.builtin.assert:
+    that:
+      - "([item.value] | flatten(skip_nulls=false) | select('string') | select('match', '^(ssh-|ecdsa-|sk-)') | list | length) == ([item.value] | flatten(skip_nulls=false) | length)"
+    fail_msg: >-
+      ssh_authorized_keys must map a UNIX USERNAME to its public key(s), e.g.
+      `pmuser: "ssh-ed25519 AAAA..."` (or a list of such strings). Got
+      user="{{ item.key }}", value="{{ item.value }}" — put the username on the
+      left and the quoted public key(s) on the right.
+    quiet: true
+  loop: "{{ ssh_authorized_keys | dict2items }}"
+  loop_control:
+    label: "{{ item.key }}"
+
+# exclusive makes the user's authorized_keys EXACTLY these keys (enables
+# rotation); a list value installs several keys for the user at once.
+- name: Install authorized keys
+  ansible.posix.authorized_key:
+    user: "{{ item.key }}"
+    key: "{{ [item.value] | flatten | join('\n') }}"
+    exclusive: "{{ ssh_authorized_keys_exclusive }}"
+    state: present
+  loop: "{{ ssh_authorized_keys | dict2items }}"
+  loop_control:
+    label: "{{ item.key }}"
+
+# Drop-in sorts before cloud-init's 50-cloud-init.conf, so its values win
+# (sshd uses the first value seen for each keyword).
+- name: Write the hardening drop-in (outranks cloud-init)
+  ansible.builtin.template:
+    src: 00-hardening.conf.j2
+    dest: /etc/ssh/sshd_config.d/00-hardening.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Reload ssh
+
+- name: Deploy the main sshd_config (validated before swap)
+  ansible.builtin.template:
+    src: sshd_config.j2
+    dest: /etc/ssh/sshd_config
+    owner: root
+    group: root
+    mode: "0644"
+    validate: "/usr/sbin/sshd -t -f %s"
+  notify: Reload ssh
+
+- name: Check for cloud-init
+  ansible.builtin.stat:
+    path: /etc/cloud
+  register: ssh_cloud_dir
+
+- name: Stop cloud-init re-enabling password auth (when passwords are off)
+  ansible.builtin.copy:
+    content: "ssh_pwauth: false\n"
+    dest: /etc/cloud/cloud.cfg.d/99-postinstall-ssh.cfg
+    owner: root
+    group: root
+    mode: "0644"
+  when:
+    - ssh_password_authentication == 'no'
+    - ssh_disable_cloudinit_pwauth
+    - ssh_cloud_dir.stat.exists

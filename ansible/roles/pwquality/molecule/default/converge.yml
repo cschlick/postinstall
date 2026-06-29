@@ -1,0 +1,8 @@
+---
+- name: Converge
+  hosts: all
+  become: true
+  vars:
+    pwquality_minlen: 16   # prove templating of the policy knobs
+  roles:
+    - role: pwquality

@@ -1,0 +1,51 @@
+---
+# ── 1. Ensure required accounts exist ──────────────────────────────────────
+# The user module is idempotent: it creates the account when missing and is a
+# no-op when it already exists — so this IS the "check, create if not" the spec
+# asks for; no explicit existence test is needed.
+- name: Ensure required user accounts exist
+  ansible.builtin.user:
+    name: "{{ item.name }}"
+    groups: "{{ item.groups | default(omit) }}"
+    append: "{{ item.append | default(true) }}"
+    shell: "{{ item.shell | default('/bin/bash') }}"
+    create_home: "{{ item.create_home | default(true) }}"
+    state: present
+  loop: "{{ accounts_present }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+# ── 2. Fully purge unwanted accounts ───────────────────────────────────────
+# Read passwd so the kill step only runs for accounts that actually exist (and
+# so the whole purge is a clean no-op once they're gone).
+- name: Read the passwd database
+  ansible.builtin.getent:
+    database: passwd
+  when: accounts_purge | length > 0
+
+# userdel orphans (or, when still logged in, refuses) a user's running
+# processes; kill them first. pkill returns 1 when nothing matched — not an
+# error here, only rc >= 2 is.
+- name: Kill any processes owned by accounts being purged
+  ansible.builtin.command: "pkill -KILL -u {{ item }}"
+  register: accounts_pkill
+  changed_when: accounts_pkill.rc == 0
+  failed_when: accounts_pkill.rc not in [0, 1]
+  loop: "{{ accounts_purge }}"
+  loop_control:
+    label: "{{ item }}"
+  when: item in (ansible_facts.getent_passwd | default({}))
+
+# state=absent + remove deletes the home dir and mail spool (userdel --remove);
+# force allows removal even if the user is still considered logged in. userdel
+# also drops the user's primary group when nothing else uses it. Idempotent: a
+# user that's already gone is reported as no change.
+- name: Fully purge unwanted accounts
+  ansible.builtin.user:
+    name: "{{ item }}"
+    state: absent
+    remove: true
+    force: true
+  loop: "{{ accounts_purge }}"
+  loop_control:
+    label: "{{ item }}"

@@ -1,0 +1,38 @@
+---
+# Debian's systemd-timesyncd is a separate package and is not installed on a
+# minimal netinstall (the host ships with no NTP client at all).
+- name: Install systemd-timesyncd
+  ansible.builtin.apt:
+    name: systemd-timesyncd
+    state: present
+    update_cache: true
+
+- name: Ensure the timesyncd drop-in directory exists
+  ansible.builtin.file:
+    path: /etc/systemd/timesyncd.conf.d
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Configure the NTP servers
+  ansible.builtin.template:
+    src: 10-ntp.conf.j2
+    dest: /etc/systemd/timesyncd.conf.d/10-ntp.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart systemd-timesyncd
+
+- name: Enable and start systemd-timesyncd
+  ansible.builtin.service:
+    name: systemd-timesyncd
+    enabled: true
+    state: started
+  when: timesync_apply
+
+# systemd-timesyncd only runs as the active time source when NTP is enabled.
+- name: Enable network time synchronisation
+  ansible.builtin.command: timedatectl set-ntp true
+  changed_when: false
+  when: timesync_apply

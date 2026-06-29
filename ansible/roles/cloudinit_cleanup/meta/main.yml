@@ -1,0 +1,12 @@
+---
+galaxy_info:
+  role_name: cloudinit_cleanup
+  author: cschlick
+  description: Strip stale ipv6-disable modprobe lines, drop cloud-init's sshd drop-in, optionally disable cloud-init (port of lib/cloudinit.py)
+  license: MIT
+  min_ansible_version: "2.15"
+  platforms:
+    - name: Debian
+      versions:
+        - trixie
+dependencies: []

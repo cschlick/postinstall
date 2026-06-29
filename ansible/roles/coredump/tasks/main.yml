@@ -1,0 +1,37 @@
+---
+# 1. sysctl: block core dumps from setuid/setgid binaries.
+- name: Block core dumps from setuid/setgid binaries (sysctl)
+  ansible.builtin.template:
+    src: 99-coredump.conf.j2
+    dest: /etc/sysctl.d/99-coredump.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Reload sysctl
+
+# 2. limits: zero the core-dump size for all PAM sessions.
+- name: Zero the core-dump size limit for all PAM sessions
+  ansible.builtin.template:
+    src: limits-nocore.conf.j2
+    dest: /etc/security/limits.d/99-nocore.conf
+    owner: root
+    group: root
+    mode: "0644"
+
+# 3. systemd-coredump: store nothing for crashes it does intercept.
+- name: Ensure the systemd-coredump drop-in directory exists
+  ansible.builtin.file:
+    path: /etc/systemd/coredump.conf.d
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Tell systemd-coredump to store nothing
+  ansible.builtin.template:
+    src: coredump.conf.j2
+    dest: /etc/systemd/coredump.conf.d/disable.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Reload systemd daemon

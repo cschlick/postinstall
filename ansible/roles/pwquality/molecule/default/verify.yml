@@ -1,0 +1,40 @@
+---
+- name: Verify
+  hosts: all
+  become: true
+  tasks:
+    - name: Stat the policy file
+      ansible.builtin.stat:
+        path: /etc/security/pwquality.conf.d/99-hardening.conf
+      register: pwquality_file
+
+    - name: Assert the policy exists and is mode 0644
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          - pwquality_file.stat.exists
+          - pwquality_file.stat.mode == '0644'
+
+    - name: Read the rendered policy
+      ansible.builtin.slurp:
+        src: /etc/security/pwquality.conf.d/99-hardening.conf
+      register: pwquality_content
+
+    - name: Assert the policy knobs rendered
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          - "'minlen = 16' in (pwquality_content.content | b64decode)"   # from converge
+          - "'minclass = 3' in (pwquality_content.content | b64decode)"
+          - "'maxrepeat = 3' in (pwquality_content.content | b64decode)"
+          - "'dictcheck = 1' in (pwquality_content.content | b64decode)"
+          - "'gecoscheck = 1' in (pwquality_content.content | b64decode)"
+          - "'enforce_for_root = 1' in (pwquality_content.content | b64decode)"
+
+    - name: Confirm libpam-pwquality is installed
+      ansible.builtin.package_facts:
+
+    - name: Assert libpam-pwquality present
+      ansible.builtin.assert:
+        quiet: true
+        that: "'libpam-pwquality' in ansible_facts.packages"

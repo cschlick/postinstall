@@ -1,0 +1,32 @@
+---
+- name: Verify
+  hosts: all
+  become: true
+  tasks:
+    - name: Look for remaining SSH host keys
+      ansible.builtin.find:
+        paths: /etc/ssh
+        patterns: "ssh_host_*"
+      register: image_hostkeys
+
+    - name: Read machine-id
+      ansible.builtin.slurp:
+        src: /etc/machine-id
+      register: image_machineid
+
+    - name: Stat the things that should be gone
+      ansible.builtin.stat:
+        path: "{{ item }}"
+      loop:
+        - /var/lib/cloud/instances
+        - /root/.bash_history
+      register: image_leftovers
+
+    - name: Assert the box was generalized
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          - image_hostkeys.matched == 0
+          - (image_machineid.content | b64decode) | trim == ''
+          - not image_leftovers.results[0].stat.exists
+          - not image_leftovers.results[1].stat.exists

@@ -1,0 +1,36 @@
+---
+- name: Prepare
+  hosts: all
+  become: true
+  tasks:
+    # Don't let the ifupdown package's postinst start networking.service in the
+    # container (it would fight docker's network management).
+    - name: Install a policy-rc.d shim that blocks service auto-start
+      ansible.builtin.copy:
+        content: |
+          #!/bin/sh
+          exit 101
+        dest: /usr/sbin/policy-rc.d
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Install ifupdown (the manager we're transitioning away from)
+      ansible.builtin.apt:
+        name: ifupdown
+        state: present
+        update_cache: true
+
+    - name: Seed an ifupdown-managed /etc/network/interfaces
+      ansible.builtin.copy:
+        dest: /etc/network/interfaces
+        content: |
+          auto lo
+          iface lo inet loopback
+
+          auto eth0
+          allow-hotplug eth0
+          iface eth0 inet dhcp
+        owner: root
+        group: root
+        mode: "0644"

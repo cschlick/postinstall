@@ -1,0 +1,8 @@
+---
+# Final "sysprep" step for image builds: strip per-instance identity so every
+# machine deployed from the snapshot is unique and re-provisions on first boot.
+# Runs ONLY when image_build is true, and must be the LAST role in the play.
+#
+# Power off at the very end so the box is ready to snapshot. Off by default —
+# Vultr can snapshot a running instance, and a poweroff ends the run abruptly.
+image_generalize_poweroff: false

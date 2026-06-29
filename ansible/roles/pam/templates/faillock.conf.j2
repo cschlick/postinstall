@@ -1,0 +1,12 @@
+# {{ ansible_managed }}
+# pam_faillock policy (pam role) — locks an account after repeated failed auths,
+# covering the local console/sudo path. Tune via the pam_faillock_* role vars.
+deny = {{ pam_faillock_deny }}
+fail_interval = {{ pam_faillock_fail_interval }}
+unlock_time = {{ pam_faillock_unlock_time }}
+{% if pam_faillock_even_deny_root %}
+even_deny_root
+{% endif %}
+{% if pam_faillock_audit %}
+audit
+{% endif %}

@@ -1,0 +1,23 @@
+---
+# Unattended-upgrades policy (port of lib/upgrades.py + configs/unattended-upgrades).
+#
+# "security" — apply only Debian-Security updates. The safe server default:
+#   small, well-tested, low regression risk.
+# "all"      — also apply trixie and trixie-updates (point-release fixes). More
+#   current, marginally higher chance an update changes behaviour.
+unattended_upgrades_mode: security      # security | all
+
+# Never auto-reboot, even when an update needs one (e.g. a new kernel). Flip to
+# true (and set a time) on hosts where an unattended reboot is acceptable.
+unattended_upgrades_automatic_reboot: false
+unattended_upgrades_reboot_time: "02:00"
+
+# APT::Periodic intervals (days; 0 disables). Mirror configs/unattended-upgrades/20auto-upgrades.
+unattended_upgrades_update_lists: 1        # apt-get update
+unattended_upgrades_run: 1                 # run unattended-upgrade
+unattended_upgrades_autoclean_interval: 7  # apt-get autoclean
+
+# When false, write the apt config but DON'T enable/start the service (the
+# molecule scenario sets this false and also blocks the package's auto-start via
+# policy-rc.d). Real hosts leave it true.
+unattended_upgrades_apply: true

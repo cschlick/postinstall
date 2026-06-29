@@ -1,0 +1,29 @@
+---
+- name: Verify
+  hosts: all
+  become: true
+  tasks:
+    - name: Stat the timesyncd drop-in
+      ansible.builtin.stat:
+        path: /etc/systemd/timesyncd.conf.d/10-ntp.conf
+      register: timesync_file
+
+    - name: Assert the drop-in exists and is mode 0644
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          - timesync_file.stat.exists
+          - timesync_file.stat.mode == '0644'
+
+    - name: Read the drop-in
+      ansible.builtin.slurp:
+        src: /etc/systemd/timesyncd.conf.d/10-ntp.conf
+      register: timesync_conf
+
+    - name: Assert the NTP sources rendered under [Time]
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          - "'[Time]' in (timesync_conf.content | b64decode)"
+          - "'NTP=0.debian.pool.ntp.org' in (timesync_conf.content | b64decode)"
+          - "'FallbackNTP=time.cloudflare.com' in (timesync_conf.content | b64decode)"

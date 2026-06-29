@@ -1,0 +1,11 @@
+---
+- name: Converge
+  hosts: all
+  become: true
+  vars:
+    # The audit subsystem is host-global; don't enable/start auditd or load
+    # rules into the host kernel from this container.
+    auditd_apply: false
+    auditd_immutable: true   # exercise the -e 2 append
+  roles:
+    - role: auditd

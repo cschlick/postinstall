@@ -1,0 +1,5 @@
+# {{ ansible_managed }}
+# Disable LLMNR/MulticastDNS — pointless responder/spoof surface on a server.
+[Resolve]
+LLMNR={{ resolved_llmnr }}
+MulticastDNS={{ resolved_multicast_dns }}

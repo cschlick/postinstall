@@ -1,0 +1,16 @@
+---
+# Cloud-image cleanup (port of lib/cloudinit.py). Three things:
+#   1. strip stale `options ipv6 ... disable=1` modprobe lines (ineffective —
+#      the kernel cmdline keeps IPv6 on — and contradictory to an IPv6 setup);
+#   2. delete cloud-init's sshd drop-in so it can't re-assert PasswordAuthentication;
+#   3. optionally stop cloud-init running on future boots.
+
+# Touch /etc/cloud/cloud-init.disabled (only when /etc/cloud exists). Off by
+# default, mirroring the script's prompt default — flip on once provisioning is
+# settled so cloud-init stops re-asserting config on every boot.
+cloudinit_disable: false
+
+# When false, remove the files but DON'T validate + reload ssh live. The
+# molecule scenario sets this false; real hosts leave it true so the drop-in
+# removal takes effect immediately.
+cloudinit_apply: true

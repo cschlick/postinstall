@@ -1,0 +1,15 @@
+---
+- name: Verify
+  hosts: all
+  become: true
+  tasks:
+    - name: Read the group database
+      ansible.builtin.getent:
+        database: group
+
+    - name: Assert groptest was removed from the peripheral groups
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          - "'groptest' not in (ansible_facts.getent_group['cdrom'][2] | default('')).split(',')"
+          - "'groptest' not in (ansible_facts.getent_group['audio'][2] | default('')).split(',')"

@@ -1,0 +1,8 @@
+---
+- name: Converge
+  hosts: all
+  become: true
+  vars:
+    image_generalize_poweroff: false   # don't kill the test container
+  roles:
+    - role: image_generalize

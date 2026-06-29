@@ -1,0 +1,21 @@
+---
+# Time synchronisation via systemd-timesyncd (SNTP client). Accurate time
+# matters for audit-log correlation, TLS certificate validation and timers.
+# Not a port — this section did not exist in the postinstall script.
+
+# Upstream NTP sources. Default to the Debian NTP pool; override per-site (e.g.
+# your provider's NTP server or an internal time source).
+timesync_ntp_servers:
+  - 0.debian.pool.ntp.org
+  - 1.debian.pool.ntp.org
+  - 2.debian.pool.ntp.org
+  - 3.debian.pool.ntp.org
+
+# Used only if none of the primary servers are reachable.
+timesync_fallback_ntp_servers:
+  - time.cloudflare.com
+
+# When false, render the timesyncd drop-in but DON'T install/enable the service
+# or toggle the (host-global, non-namespaced) clock. The molecule scenario sets
+# this false.
+timesync_apply: true

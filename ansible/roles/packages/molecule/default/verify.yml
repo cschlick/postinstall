@@ -1,0 +1,30 @@
+---
+- name: Verify
+  hosts: all
+  become: true
+  tasks:
+    - name: Gather installed-package facts
+      ansible.builtin.package_facts:
+
+    - name: Assert install/purge outcomes
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          # installed from packages_install
+          - "'curl' in ansible_facts.packages"
+          - "'tcpdump' in ansible_facts.packages"
+          # purged: wamerican was pre-installed in prepare.yml, ufw never was
+          - "'wamerican' not in ansible_facts.packages"
+          - "'ufw' not in ansible_facts.packages"
+
+    - name: Read the apt no-recommends drop-in
+      ansible.builtin.slurp:
+        src: /etc/apt/apt.conf.d/99norecommends
+      register: packages_apt_conf
+
+    - name: Assert Recommends and Suggests are disabled
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          - "'APT::Install-Recommends \"false\";' in (packages_apt_conf.content | b64decode)"
+          - "'APT::Install-Suggests \"false\";' in (packages_apt_conf.content | b64decode)"

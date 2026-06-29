@@ -1,0 +1,22 @@
+---
+- name: Stop and disable avahi-daemon (tolerate it being absent)
+  ansible.builtin.systemd_service:
+    name: avahi-daemon
+    state: stopped
+    enabled: false
+  failed_when: false
+
+# `systemctl mask` works even when the unit/package is absent, leaving a
+# /dev/null symlink that survives a later reinstall (so it can't auto-start).
+# `creates:` makes it idempotent.
+- name: Mask avahi-daemon
+  ansible.builtin.command: systemctl mask avahi-daemon
+  args:
+    creates: /etc/systemd/system/avahi-daemon.service
+
+- name: Purge avahi-daemon
+  ansible.builtin.apt:
+    name: avahi-daemon
+    state: absent
+    purge: true
+  when: disable_mdns_purge
