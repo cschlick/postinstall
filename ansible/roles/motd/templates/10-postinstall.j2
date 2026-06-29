@@ -13,16 +13,11 @@ fi
 
 printf " last apply: "
 if [ -e "$LATEST" ]; then
-    log_file=$(readlink -f "$LATEST" 2>/dev/null)
-    log_base=$(basename "$log_file" .log 2>/dev/null)
-    ts="${log_base#apply-}"   # apply-YYYYMMDD-HHMMSS -> YYYYMMDD-HHMMSS
-    printf "%s-%s-%s %s:%s:%s\n" \
-        "${ts:0:4}" "${ts:4:2}" "${ts:6:2}" \
-        "${ts:9:2}" "${ts:11:2}" "${ts:13:2}"
+    stat -c '%y' "$LATEST" 2>/dev/null | cut -d'.' -f1
     recap=$(grep -A2 '^PLAY RECAP' "$LATEST" 2>/dev/null | tail -1)
     [ -n "$recap" ] && printf "%s\n" "$recap" | sed 's/^[[:space:]]*/             : /'
 else
-    printf "no log yet — run apply.sh\n"
+    printf "no log yet\n"
 fi
 
 printf "\n"
