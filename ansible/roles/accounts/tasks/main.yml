@@ -21,7 +21,28 @@
   loop_control:
     label: "{{ item.name }}"
 
-# ── 2. Fully purge unwanted accounts ───────────────────────────────────────
+# ── 2. Generate SSH keypairs ────────────────────────────────────────────────
+- name: Ensure .ssh directory exists
+  ansible.builtin.file:
+    path: "/home/{{ item.name }}/.ssh"
+    state: directory
+    owner: "{{ item.name }}"
+    group: "{{ item.name }}"
+    mode: "0700"
+  loop: "{{ accounts_present | selectattr('generate_ssh_key', 'defined') | selectattr('generate_ssh_key') | list }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: Generate ed25519 SSH keypair
+  ansible.builtin.command:
+    cmd: "ssh-keygen -t ed25519 -f /home/{{ item.name }}/.ssh/id_ed25519 -N ''"
+    creates: "/home/{{ item.name }}/.ssh/id_ed25519"
+  become_user: "{{ item.name }}"
+  loop: "{{ accounts_present | selectattr('generate_ssh_key', 'defined') | selectattr('generate_ssh_key') | list }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+# ── 3. Fully purge unwanted accounts ───────────────────────────────────────
 # Read passwd so the kill step only runs for accounts that actually exist (and
 # so the whole purge is a clean no-op once they're gone).
 - name: Read the passwd database
