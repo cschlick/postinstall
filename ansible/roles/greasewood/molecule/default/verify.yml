@@ -15,7 +15,7 @@
 
     - name: Stat the greasewood symlink
       ansible.builtin.stat:
-        path: /usr/local/bin/greasewood
+        path: /usr/local/bin/gw
       register: verify_symlink
 
     - name: Assert symlink exists and points into the venv
@@ -27,5 +27,5 @@
           - "'/opt/greasewood' in verify_symlink.stat.lnk_target"
 
     - name: Run greasewood --version (smoke test)
-      ansible.builtin.command: /usr/local/bin/greasewood --version
+      ansible.builtin.command: /usr/local/bin/gw --version
       changed_when: false

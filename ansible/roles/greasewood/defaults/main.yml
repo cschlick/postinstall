@@ -1,4 +1,4 @@
 ---
 greasewood_venv: /opt/greasewood
 greasewood_repo: https://gitlab.com/cschlick/greasewood.git
-greasewood_bin: /usr/local/bin/greasewood
+greasewood_bin: /usr/local/bin/gw

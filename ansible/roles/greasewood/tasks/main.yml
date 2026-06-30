@@ -23,7 +23,7 @@
 
 - name: Symlink greasewood into PATH
   ansible.builtin.file:
-    src: "{{ greasewood_venv }}/bin/greasewood"
+    src: "{{ greasewood_venv }}/bin/gw"
     dest: "{{ greasewood_bin }}"
     state: link
     owner: root
