@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# Vultr startup script: bring a fresh box up as a locked-down gw_node.
+#
+# It clones this repo, hardens the host with the gw_node profile (SSH reachable
+# ONLY over the gw-mesh overlay), then joins the mesh. Public SSH is closed, so
+# until the mesh is up the Vultr web console is your only way in; keep it handy.
+#
+# Paste this into the Vultr startup script field. Do NOT commit a real token:
+# mint a short-lived / single-use gw token and fill TOKEN below at paste time.
+# Avoid smart quotes: the Vultr UI rejects non-ASCII; this script uses none.
+set -eu
+
+REPO=https://gitlab.com/cschlick/postinstall.git
+CLONE_DIR=/opt/postinstall
+TOKEN=PASTE_TOKEN_HERE
+
+# deps (apply.sh needs ansible already present)
+apt-get update -qq
+apt-get install -y -qq git ansible
+
+# clone
+rm -rf $CLONE_DIR
+git clone $REPO $CLONE_DIR
+
+# harden + lock SSH to the gw-mesh overlay (gw_node profile)
+GW_NODE=1 bash $CLONE_DIR/apply.sh
+
+# join the mesh (creates gw-mesh; SSH-over-mesh works once it is up).
+# Guarded so a reboot re-run with a spent single-use token does not fail.
+gw status >/dev/null 2>&1 || gw join $TOKEN

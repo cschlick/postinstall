@@ -5,6 +5,11 @@
 #
 # IMAGE_BUILD=1 bash apply.sh  -> also runs the cloud_init + image_generalize
 # roles to produce a generalized, cloud-init-ready Vultr image. Snapshot afterward.
+#
+# GW_NODE=1 bash apply.sh  -> apply the locked-down gw_node profile (SSH only on
+# the gw-mesh overlay, no forwarding) instead of the public default. Use on nodes
+# that are, or are about to be, joined to the mesh — the Vultr console is your
+# fallback if mesh SSH isn't up yet.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -12,6 +17,7 @@ REPO="https://gitlab.com/cschlick/postinstall.git"
 
 EXTRA=()
 [ "${IMAGE_BUILD:-0}" = 1 ] && EXTRA+=(-e image_build=true)
+[ "${GW_NODE:-0}" = 1 ] && EXTRA+=(-e @"$ROOT/ansible/group_vars/tag_gw_node.yml")
 
 # Ensure galaxy collections are present (idempotent; fast when already installed).
 ansible-galaxy collection install -r "$ROOT/ansible/requirements.yml"
