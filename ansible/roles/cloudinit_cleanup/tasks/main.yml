@@ -78,11 +78,33 @@
     path: /root/.ssh/authorized_keys
     state: absent
 
-# 5. Optionally stop cloud-init running on future boots.
+# 5. Keep cloud-init coherent with the purged default user, then optionally
+#    stop it running on future boots.
 - name: Stat /etc/cloud
   ansible.builtin.stat:
     path: /etc/cloud
   register: cloudinit_dir
+
+# The base image's default_user is 'linuxuser' (purged by the accounts role),
+# which makes ssh-authkey-fingerprints (and any other default_user consumer)
+# fail with getpwnam KeyError and pin cloud-init's status at 'error'. A
+# cloud.cfg.d drop-in overrides just the name so it resolves to a real account.
+- name: Point cloud-init's default user at a surviving account
+  ansible.builtin.copy:
+    dest: /etc/cloud/cloud.cfg.d/99-default-user.cfg
+    content: |
+      # {{ ansible_managed }}
+      # default_user 'linuxuser' is purged by the accounts role; point cloud-init
+      # at {{ cloudinit_default_user }} so its modules don't fail on a missing user.
+      system_info:
+        default_user:
+          name: {{ cloudinit_default_user }}
+    owner: root
+    group: root
+    mode: "0644"
+  when:
+    - cloudinit_dir.stat.exists
+    - cloudinit_dir.stat.isdir
 
 - name: Disable cloud-init on future boots
   ansible.builtin.copy:

@@ -14,3 +14,9 @@ cloudinit_disable: false
 # molecule scenario sets this false; real hosts leave it true so the drop-in
 # removal takes effect immediately.
 cloudinit_apply: true
+
+# Cloud-init's "default user" in the base image is 'linuxuser', which the
+# accounts role purges — so modules like ssh-authkey-fingerprints KeyError on a
+# missing user and flip cloud-init's status to 'error'. Point it at the account
+# we actually keep.
+cloudinit_default_user: pmuser
