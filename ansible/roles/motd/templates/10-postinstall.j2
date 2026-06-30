@@ -7,11 +7,21 @@ LATEST={{ motd_apply_log }}
 printf " cloud-init: "
 if command -v cloud-init >/dev/null 2>&1; then
     ci_status=$(cloud-init status 2>/dev/null | awk '/^status:/ { print $2 }')
-    printf "%s\n" "$ci_status"
-    if [ "$ci_status" = "error" ]; then
-        cloud-init status --long 2>/dev/null | sed 's/^/             /'
-        printf "             log: /var/log/cloud-init.log\n"
-    fi
+    printf "%s\n" "${ci_status:-unknown}"
+    case "$ci_status" in
+        error|degraded)
+            # Surface the recorded reason: the 'detail:' line plus the first few
+            # entries under errors:/recoverable_errors: from `status --long`.
+            cloud-init status --long 2>/dev/null | awk '
+                /^detail:/ { sub(/^detail: */, ""); if ($0 && n<6) { print "             : " $0; n++ } }
+                /^errors:/ || /^recoverable_errors:/ { inerr=1; next }
+                inerr && /^[[:alnum:]_]+:/ { inerr=0 }
+                inerr && NF { sub(/^[[:space:]-]+/, ""); if (n<6) { print "             : " $0; n++ } }
+            '
+            printf "             : logs: /var/log/cloud-init.log /var/log/cloud-init-output.log\n"
+            printf "             : more: cloud-init status --long ; cloud-init analyze blame\n"
+            ;;
+    esac
 else
     printf "not installed\n"
 fi
@@ -21,6 +31,10 @@ if [ -e "$LATEST" ]; then
     stat -c '%y' "$LATEST" 2>/dev/null | cut -d'.' -f1
     recap=$(grep -A2 '^PLAY RECAP' "$LATEST" 2>/dev/null | tail -1)
     [ -n "$recap" ] && printf "%s\n" "$recap" | sed 's/^[[:space:]]*/             : /'
+    # Flag a failed/unreachable run and point at the full log.
+    if printf '%s' "$recap" | grep -qE 'failed=[1-9]|unreachable=[1-9]'; then
+        printf "             : run had errors — see %s\n" "$LATEST"
+    fi
 else
     printf "no log yet\n"
 fi
