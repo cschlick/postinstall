@@ -5,3 +5,10 @@ nftables_ssh_port: 22
 # Extra inbound TCP ports to accept (IPv4 and IPv6). Empty on the headless
 # base; the old GUI profile is just: nftables_extra_tcp_ports: [3389]  # RDP
 nftables_extra_tcp_ports: []
+
+# SSH exposure. DEFAULT = public: SSH reachable from the internet, so a node can
+# never be locked out before its mesh is up. Lock a node down by tagging it
+# "gw_node" (group_vars/tag_gw_node.yml sets nftables_ssh_public: false), which
+# restricts SSH to the VPN overlay interface (nftables_ssh_iifname) only.
+nftables_ssh_public: true
+nftables_ssh_iifname: gw-mesh

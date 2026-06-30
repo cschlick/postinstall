@@ -34,12 +34,16 @@ MaxSessions 2
 PermitUserRC no
 Compression no
 
-# Disable unused features
+# Disable unused features. Agent forwarding is always off (keys never leave the
+# client); a jump/bastion host opts into SSH-only local forwarding for ProxyJump.
 X11Forwarding no
-AllowTcpForwarding {{ 'yes' if ssh_allow_proxy_jump else 'no' }}
+AllowTcpForwarding {{ 'local' if ssh_allow_proxy_jump else 'no' }}
 AllowAgentForwarding no
 AllowStreamLocalForwarding no
-{% if not ssh_allow_proxy_jump %}
+{% if ssh_allow_proxy_jump %}
+# Jump host: local forwarding to the SSH port only (ProxyJump / ssh -W).
+PermitOpen *:{{ ssh_port }}
+{% else %}
 DisableForwarding yes
 PermitOpen none
 {% endif %}

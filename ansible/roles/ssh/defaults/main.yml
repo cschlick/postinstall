@@ -22,6 +22,8 @@ ssh_authorized_keys: {}
 # a deliberate rotation, e.g. -e ssh_authorized_keys_exclusive=true.
 ssh_authorized_keys_exclusive: false
 
-# Set to true on jump/bastion hosts. Enables AllowTcpForwarding and drops
-# DisableForwarding + PermitOpen none, which together block ProxyJump.
+# Set to true on jump/bastion hosts. Enables local TCP forwarding scoped to the
+# SSH port only (PermitOpen *:{{ ssh_port }}) so the host can serve ProxyJump
+# (ssh -J / -W) but nothing else; drops the DisableForwarding + PermitOpen none
+# lockdown. Agent forwarding stays off regardless (keys never leave the client).
 ssh_allow_proxy_jump: false

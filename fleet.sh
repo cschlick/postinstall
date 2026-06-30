@@ -17,10 +17,15 @@
 #   check                DRY RUN of site.yml (--check --diff) — start here
 #   apply                apply site.yml to the fleet
 #   rotate-keys          apply only the ssh role (--tags ssh)
+#   local                apply the WORKING TREE to THIS host (-c local); no
+#                        Vultr API key needed. Gets the default profile unless
+#                        you opt in, e.g. ./fleet.sh local -e nftables_ssh_public=true
 #   help                 this message
 #
 # Examples:
 #   ./fleet.sh list
+#   ./fleet.sh local --check --diff               # dry-run against localhost
+#   ./fleet.sh local --tags ssh,nftables          # one subset, locally
 #   ./fleet.sh check --limit tag_canary           # dry-run one group
 #   ./fleet.sh apply --limit tag_canary           # apply to one group first
 #   ./fleet.sh apply                              # ...then the whole fleet
@@ -45,6 +50,8 @@ usage() { awk 'NR==1{next} /^#/{sub(/^# ?/,"");print;next} {exit}' "$SELF"; }
 cmd="${1:-help}"; shift || true
 case "$cmd" in
   help|-h|--help) usage; exit 0 ;;
+  # Localhost run needs no Vultr inventory or API key — handle it before auth.
+  local) exec ansible-playbook -i 'localhost,' -c local -l localhost site.yml "$@" ;;
   list|ping|check|apply|rotate-keys) ;;   # known commands — fall through to auth
   *) echo "fleet.sh: unknown command '$cmd'" >&2; echo >&2; usage; exit 2 ;;
 esac
@@ -64,10 +71,31 @@ elif [ -z "${VULTR_API_KEY:-}" ]; then
   exit 1
 fi
 
+# Warn about hosts carrying neither the 'bastion' nor 'gw_node' tag: they fall
+# through to the permissive default profile (public SSH), which is a lockout-safe
+# default but a silent exposure if left that way. Non-fatal — just a heads-up.
+preflight_tags() {
+  local json stragglers
+  json="$(ansible-inventory -i "$INV" "${ARGS[@]}" --list 2>/dev/null)" || return 0
+  stragglers="$(printf '%s' "$json" | python3 -c '
+import json, sys
+d = json.load(sys.stdin)
+allh = set(d.get("_meta", {}).get("hostvars", {}))
+tagged = set(d.get("tag_bastion", {}).get("hosts", [])) | set(d.get("tag_gw_node", {}).get("hosts", []))
+print("\n".join(sorted(allh - tagged)))
+' 2>/dev/null)" || return 0
+  if [ -n "$stragglers" ]; then
+    echo "fleet.sh: WARNING — these hosts have neither the 'bastion' nor 'gw_node' tag" >&2
+    echo "          and will use the permissive DEFAULT profile (public SSH):" >&2
+    printf '            %s\n' $stragglers >&2
+    echo >&2
+  fi
+}
+
 case "$cmd" in
   list)        exec ansible-inventory -i "$INV" "${ARGS[@]}" --graph "$@" ;;
   ping)        exec ansible          -i "$INV" "${ARGS[@]}" all -m ansible.builtin.ping "$@" ;;
-  check)       exec ansible-playbook -i "$INV" "${ARGS[@]}" site.yml --check --diff "$@" ;;
-  apply)       exec ansible-playbook -i "$INV" "${ARGS[@]}" site.yml "$@" ;;
-  rotate-keys) exec ansible-playbook -i "$INV" "${ARGS[@]}" site.yml --tags ssh "$@" ;;
+  check)       preflight_tags; exec ansible-playbook -i "$INV" "${ARGS[@]}" site.yml --check --diff "$@" ;;
+  apply)       preflight_tags; exec ansible-playbook -i "$INV" "${ARGS[@]}" site.yml "$@" ;;
+  rotate-keys) preflight_tags; exec ansible-playbook -i "$INV" "${ARGS[@]}" site.yml --tags ssh "$@" ;;
 esac

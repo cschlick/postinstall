@@ -1,0 +1,16 @@
+---
+# Overrides for the bastion host — the Vultr instance tagged "bastion". This tag
+# is mainly a TARGETING handle: it lets you scope apply runs to the bastion
+# (--limit tag_bastion) vs the locked-down fleet (--limit tag_gw_node).
+#
+# The settings below match the role defaults, so tagging is not strictly required
+# for correct behavior today — but pinning them here keeps the bastion permissive
+# even if the defaults are ever tightened. Tag a node EITHER bastion OR gw_node,
+# never both (tag_gw_node would win and lock it down).
+
+# SSH open to the public internet.
+nftables_ssh_public: true
+
+# Serve as a ProxyJump host: SSH-only local forwarding (ssh -J), agent
+# forwarding stays off. See ssh_allow_proxy_jump in roles/ssh/defaults.
+ssh_allow_proxy_jump: true
