@@ -49,9 +49,17 @@ table inet filter {
         tcp dport {{ port }} ct state new accept
 {% endfor %}
 
-        # greasewood + wireguard
+        # greasewood + wireguard. The two WireGuard UDP ports face the underlay
+        # (they arrive on the physical NIC), so they accept from anywhere. The
+        # control/enroll TCP planes bind only to the overlay + loopback, so each
+        # is scoped to its own tunnel interface — nothing reaches them off the
+        # underlay even if a bind ever regressed:
+        #   gw-mesh  tcp 51902  control plane (when this node is the hub)
+        #   gw-door  tcp 51903  enrollment exchange (when hub, during a window)
+        # Same on every node so any node can become the hub with no rule change.
         ip6 saddr ::/0 udp dport { 51900, 51901 } ct state new accept
-        ip6 saddr ::/0 tcp dport { 51902, 51903 } ct state new accept
+        iifname "gw-mesh" tcp dport 51902 ct state new accept
+        iifname "gw-door" tcp dport 51903 ct state new accept
 
         # Log anything that reaches the end of the chain before the default
         # drop policy takes it. Rate-limited so a flood can't fill the journal;
