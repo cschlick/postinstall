@@ -357,6 +357,69 @@ a key by surprise); pass `true` only for the deliberate removal step. ⚠️ Tes
 new key first — an exclusive run with a wrong key replaces the only key
 fleet-wide.
 
+## Host profiles: bastion vs gw_node
+
+SSH exposure is chosen per host by a **Vultr tag**, via the dynamic inventory
+(`group_vars/tag_<tag>.yml` attaches to the auto-created `tag_<tag>` group).
+
+| Tag | SSH reachable on | Forwarding |
+|-----|------------------|------------|
+| `bastion` | public internet **and** `gw-mesh` | TCP forwarding for ProxyJump (`PermitOpen *:22`), no agent forwarding |
+| `gw_node` | `gw-mesh` overlay only | none (`DisableForwarding yes`) |
+| *(untagged)* | public internet (the lockout-safe **default**) | none |
+
+The default is permissive on purpose: a brand-new or untagged node always comes
+up publicly reachable, so you can never lock yourself out. Lock a node down only
+**after** it is reachable over `gw-mesh`:
+
+```bash
+# A fresh instance comes up untagged (public). Once it's on the mesh:
+#   tag it gw_node in Vultr (web console or API), then:
+./fleet.sh check --limit tag_gw_node     # dry-run the locked-down group
+./fleet.sh apply --limit tag_gw_node
+./fleet.sh apply                         # whole fleet; each host self-selects its profile
+```
+
+Tag a node **either** `bastion` **or** `gw_node`, never both. `./fleet.sh
+check|apply` warns about any host carrying neither tag (it would sit on the
+public default). The first instance (the bastion) is bootstrapped locally and
+needs no tag — it gets the default/bastion profile:
+
+```bash
+bash apply.sh            # on the box: pulls the repo, applies the default profile
+./fleet.sh local         # alt: apply the working tree to THIS host (no Vultr key)
+```
+
+### Reaching gw_nodes through the bastion (ProxyJump)
+
+gw_nodes accept SSH only over the mesh, so hop through the bastion. ProxyJump
+keeps your private keys on your laptop (the bastion only forwards the TCP
+connection — it never sees your agent), which is why agent forwarding is off.
+
+```bash
+ssh -J pmuser@<bastion-public-ip> pmuser@<gw_node-mesh-addr>
+```
+
+Or make it automatic in `~/.ssh/config`:
+
+```sshconfig
+Host bastion
+    HostName <bastion-public-ip>
+    User pmuser
+
+# Any mesh node: ssh gw-<name> and it jumps via the bastion automatically.
+Host gw-*
+    User pmuser
+    ProxyJump bastion
+```
+
+```bash
+ssh gw-web01      # = ssh -J bastion, transparently
+```
+
+(The bastion's `ssh_permit_open` is `*:22` — it can only forward to SSH, nothing
+else. Tighten to `<gw-mesh-cidr>:22` if you want to restrict it to mesh hosts.)
+
 ## Testing (Molecule)
 
 Every role has a Molecule scenario (`roles/<role>/molecule/default/`) that spins
