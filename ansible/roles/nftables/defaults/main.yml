@@ -8,3 +8,9 @@ nftables_extra_tcp_ports: []
 
 # Extra inbound UDP ports to accept (IPv6 only).
 nftables_extra_udp6_ports: [51820, 51821]
+
+# Inbound TCP rules scoped to specific input interfaces.
+# Each entry: { ifaces: [...], ports: [...] }
+nftables_iface_tcp_ports:
+  - ifaces: ["gw-door", "gw0"]
+    ports: [7946, 7947]
