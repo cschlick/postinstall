@@ -1,0 +1,13 @@
+# Managed by Ansible (roles/greasewood). Mirrors greasewood/systemd/.
+[Unit]
+Description=Watch for greasewood configuration and start the daemon
+Documentation={{ greasewood_repo }}
+
+[Path]
+# Start greasewood.service once /etc/greasewood.toml exists (after setup-hub /
+# join). After a config-changing re-join: systemctl restart greasewood.
+PathExists=/etc/greasewood.toml
+Unit=greasewood.service
+
+[Install]
+WantedBy=paths.target

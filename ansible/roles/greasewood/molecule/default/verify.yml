@@ -29,3 +29,36 @@
     - name: Run greasewood --version (smoke test)
       ansible.builtin.command: /usr/local/bin/gw --version
       changed_when: false
+
+    - name: Stat the systemd units
+      ansible.builtin.stat:
+        path: "/etc/systemd/system/{{ item }}"
+      register: verify_units
+      loop:
+        - greasewood.service
+        - greasewood.path
+
+    - name: Assert both units were installed
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          - verify_units.results[0].stat.exists
+          - verify_units.results[1].stat.exists
+
+    - name: Check the path watcher is enabled + active
+      ansible.builtin.command: systemctl is-active greasewood.path
+      register: verify_path_active
+      changed_when: false
+      failed_when: verify_path_active.stdout != "active"
+
+    - name: Check greasewood.service is enabled (for boot)
+      ansible.builtin.command: systemctl is-enabled greasewood.service
+      register: verify_svc_enabled
+      changed_when: false
+      failed_when: verify_svc_enabled.stdout != "enabled"
+
+    - name: Check the daemon is NOT running yet (no config → idle)
+      ansible.builtin.command: systemctl is-active greasewood.service
+      register: verify_svc_active
+      changed_when: false
+      failed_when: verify_svc_active.stdout == "active"

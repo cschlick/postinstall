@@ -28,3 +28,33 @@
     state: link
     owner: root
     group: root
+
+- name: Install greasewood systemd units
+  ansible.builtin.template:
+    src: "{{ item }}.j2"
+    dest: "/etc/systemd/system/{{ item }}"
+    owner: root
+    group: root
+    mode: "0644"
+  loop:
+    - greasewood.service
+    - greasewood.path
+  notify: Reload systemd
+
+# The path unit is the always-armed watcher: enabling+starting it makes the
+# daemon come up on its own as soon as setup-hub / join writes the config —
+# the operator never runs `gw run` by hand. Opt out with:
+#   systemctl disable --now greasewood.path greasewood.service
+- name: Enable and start the greasewood config watcher
+  ansible.builtin.systemd_service:
+    name: greasewood.path
+    enabled: true
+    state: started
+    daemon_reload: true
+
+# Enable (not necessarily start) the daemon so it also comes up at boot once
+# configured. Its ConditionPathExists skips it cleanly when unconfigured.
+- name: Enable the greasewood daemon for boot
+  ansible.builtin.systemd_service:
+    name: greasewood.service
+    enabled: true
