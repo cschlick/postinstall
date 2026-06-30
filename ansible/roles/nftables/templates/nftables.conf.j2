@@ -49,14 +49,9 @@ table inet filter {
         tcp dport {{ port }} ct state new accept
 {% endfor %}
 
-        # greasewood + wireguard. The control/enroll planes bind only to the
-        # overlay + loopback, so each is scoped to its tunnel interface:
-        #   gw0      tcp 7946  control plane (when this node is the hub)
-        #   gw-door  tcp 7947  enrollment exchange (when hub, during a window)
-        # Same on every node so any node can become the hub with no rule change.
-        ip6 saddr ::/0 udp dport { 51820, 51821 } ct state new accept
-        iifname "gw0" tcp dport 7946 ct state new accept
-        iifname "gw-door" tcp dport 7947 ct state new accept
+        # greasewood + wireguard
+        ip6 saddr ::/0 udp dport { 51900, 51901 } ct state new accept
+        ip6 saddr ::/0 tcp dport { 51902, 51903 } ct state new accept
 
         # Log anything that reaches the end of the chain before the default
         # drop policy takes it. Rate-limited so a flood can't fill the journal;
