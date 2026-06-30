@@ -5,12 +5,3 @@ nftables_ssh_port: 22
 # Extra inbound TCP ports to accept (IPv4 and IPv6). Empty on the headless
 # base; the old GUI profile is just: nftables_extra_tcp_ports: [3389]  # RDP
 nftables_extra_tcp_ports: []
-
-# Extra inbound UDP ports to accept (IPv6 only).
-nftables_extra_udp6_ports: [51820, 51821]
-
-# Inbound TCP rules scoped to specific input interfaces.
-# Each entry: { ifaces: [...], ports: [...] }
-nftables_iface_tcp_ports:
-  - ifaces: ["gw-door", "gw0"]
-    ports: [7946, 7947]

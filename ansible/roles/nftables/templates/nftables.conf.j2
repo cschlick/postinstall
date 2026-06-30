@@ -48,14 +48,10 @@ table inet filter {
         # Extra allowed inbound TCP (IPv4 and IPv6).
         tcp dport {{ port }} ct state new accept
 {% endfor %}
-{% for port in nftables_extra_udp6_ports %}
-        # Extra allowed inbound UDP (IPv6 only).
-        ip6 saddr ::/0 udp dport {{ port }} ct state new accept
-{% endfor %}
-{% for rule in nftables_iface_tcp_ports %}
-        # TCP ports allowed inbound on specific interfaces.
-        iifname { {{ rule.ifaces | map('tojson') | join(', ') }} } tcp dport { {{ rule.ports | join(', ') }} } ct state new accept
-{% endfor %}
+
+        # greasewood + wireguard
+        ip6 saddr ::/0 udp dport { 51820, 51821 } ct state new accept
+        iifname { "gw-door", "gw0" } tcp dport { 7946, 7947 } ct state new accept
 
         # Log anything that reaches the end of the chain before the default
         # drop policy takes it. Rate-limited so a flood can't fill the journal;
