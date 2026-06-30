@@ -42,7 +42,20 @@
   loop_control:
     label: "{{ item.name }}"
 
-# ── 3. Fully purge unwanted accounts ───────────────────────────────────────
+# ── 3. Sudoers ──────────────────────────────────────────────────────────────
+- name: Grant passwordless sudo
+  ansible.builtin.copy:
+    content: "{{ item.name }} ALL=(ALL) NOPASSWD: ALL\n"
+    dest: "/etc/sudoers.d/{{ item.name }}-nopasswd"
+    owner: root
+    group: root
+    mode: "0440"
+    validate: visudo -cf %s
+  loop: "{{ accounts_present | selectattr('nopasswd_sudo', 'defined') | selectattr('nopasswd_sudo') | list }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+# ── 4. Fully purge unwanted accounts ───────────────────────────────────────
 # Read passwd so the kill step only runs for accounts that actually exist (and
 # so the whole purge is a clean no-op once they're gone).
 - name: Read the passwd database
