@@ -109,14 +109,20 @@
 # 6. Clear the recorded boot-time error without waiting for a reboot. On a
 #    fresh bootstrap the accounts role purges linuxuser WHILE cloud-init's
 #    final stage is still running (apply.sh is executed by the startup
-#    script, i.e. inside that stage), so ssh-authkey-fingerprints records a
-#    KeyError AFTER the drop-in above is written — and the error sits in
-#    status.json (and the MOTD) until cloud-init runs again. Re-running the
-#    final stage rewrites status.json clean: per-instance modules are skipped
-#    via their semaphores, and anything that does re-run now resolves the
-#    drop-in's default user. Detached via systemd-run because during a
-#    bootstrap we ARE inside the final stage — the repair must wait for the
-#    current run to finish (status --wait), not re-enter it.
+#    script, i.e. inside that stage), so ssh-authkey-fingerprints — which
+#    runs AFTER the startup script, in the same stage — records a KeyError
+#    that sits in status.json (and the MOTD) until cloud-init runs again.
+#    Re-running the final stage rewrites status.json clean: per-instance
+#    modules (including the failed one, whose semaphore persists) are
+#    skipped, and anything that does re-run now resolves the drop-in's
+#    default user. Detached via systemd-run because during a bootstrap we
+#    ARE inside the final stage — the repair must wait for the current run
+#    to finish (status --wait), not re-enter it.
+#
+#    Trigger on either ordering: the error is already recorded ('linuxuser'
+#    in the status output — post-boot manual apply), or cloud-init is still
+#    running (mid-bootstrap: the failure hasn't happened YET — it fires
+#    after this apply returns, so schedule the repair preemptively).
 - name: Read cloud-init status
   ansible.builtin.command: cloud-init status --long
   register: cloudinit_status
@@ -128,7 +134,9 @@
     systemd-run --unit=cloudinit-status-repair --collect
     bash -c 'cloud-init status --wait >/dev/null 2>&1;
     exec cloud-init modules --mode=final'
-  when: "'linuxuser' in (cloudinit_status.stdout | default(''))"
+  when: >-
+    'linuxuser' in (cloudinit_status.stdout | default(''))
+    or 'status: running' in (cloudinit_status.stdout | default(''))
 
 - name: Disable cloud-init on future boots
   ansible.builtin.copy:
