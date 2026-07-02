@@ -1,0 +1,44 @@
+#!/usr/bin/env python3
+# Managed by Ansible (roles/cloudinit_cleanup).
+#
+# Scrub the recorded ssh-authkey-fingerprints/linuxuser failure out of
+# cloud-init's status files. The failure is cosmetic-but-sticky: the accounts
+# role purges linuxuser while cloud-init's final stage is mid-run, the module
+# records a KeyError, and (verified on cloud-init 25.1.4) re-running
+# `cloud-init modules --mode=final` does NOT clear previously recorded errors
+# — only a reboot does. The module is once-per-instance so it will never run
+# (or fail) again on this box; the recorded error is pure stale reporting.
+import json
+
+MARKERS = ("linuxuser", "ssh-authkey-fingerprints")
+
+
+def scrub_list(items):
+    return [i for i in items if not any(m in str(i) for m in MARKERS)]
+
+
+def scrub_section(sec):
+    if not isinstance(sec, dict):
+        return
+    if isinstance(sec.get("errors"), list):
+        sec["errors"] = scrub_list(sec["errors"])
+    rec = sec.get("recoverable_errors")
+    if isinstance(rec, dict):
+        for level in list(rec):
+            rec[level] = scrub_list(rec[level])
+            if not rec[level]:
+                del rec[level]
+
+
+for path in ("/var/lib/cloud/data/status.json", "/var/lib/cloud/data/result.json"):
+    try:
+        with open(path) as f:
+            data = json.load(f)
+    except (OSError, ValueError):
+        continue
+    v1 = data.get("v1", {})
+    scrub_section(v1)
+    for section in v1.values():
+        scrub_section(section)
+    with open(path, "w") as f:
+        json.dump(data, f)

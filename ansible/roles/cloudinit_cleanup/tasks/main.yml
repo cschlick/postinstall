@@ -111,29 +111,38 @@
 #    final stage is still running (apply.sh is executed by the startup
 #    script, i.e. inside that stage), so ssh-authkey-fingerprints — which
 #    runs AFTER the startup script, in the same stage — records a KeyError
-#    that sits in status.json (and the MOTD) until cloud-init runs again.
-#    Re-running the final stage rewrites status.json clean: per-instance
-#    modules (including the failed one, whose semaphore persists) are
-#    skipped, and anything that does re-run now resolves the drop-in's
-#    default user. Detached via systemd-run because during a bootstrap we
-#    ARE inside the final stage — the repair must wait for the current run
-#    to finish (status --wait), not re-enter it.
+#    that sits in status.json (and the MOTD) until the next reboot. There is
+#    no supported way to clear a recorded error: re-running
+#    `cloud-init modules --mode=final` preserves prior errors (verified on
+#    25.1.4). So a helper script scrubs the stale entries out of
+#    status.json/result.json directly — pure reporting state; the module is
+#    once-per-instance and will never run again on this box.
 #
-#    Trigger on either ordering: the error is already recorded ('linuxuser'
-#    in the status output — post-boot manual apply), or cloud-init is still
-#    running (mid-bootstrap: the failure hasn't happened YET — it fires
-#    after this apply returns, so schedule the repair preemptively).
+#    Detached via systemd-run because during a bootstrap we ARE inside the
+#    final stage: the scrub must wait for the current run to finish and
+#    record its error first (status --wait), then remove it. Trigger on
+#    either ordering: error already recorded ('linuxuser' in the status
+#    output — post-boot manual apply), or cloud-init still running
+#    (mid-bootstrap: the failure hasn't happened YET; scrub preemptively).
+- name: Install the cloud-init status scrub helper
+  ansible.builtin.copy:
+    src: cloudinit-scrub-linuxuser
+    dest: /usr/local/sbin/cloudinit-scrub-linuxuser
+    owner: root
+    group: root
+    mode: "0755"
+
 - name: Read cloud-init status
   ansible.builtin.command: cloud-init status --long
   register: cloudinit_status
   changed_when: false
   failed_when: false
 
-- name: Schedule a status repair once cloud-init finishes (clears stale error)
+- name: Schedule a status scrub once cloud-init finishes (clears stale error)
   ansible.builtin.command: >-
     systemd-run --unit=cloudinit-status-repair --collect
     bash -c 'cloud-init status --wait >/dev/null 2>&1;
-    exec cloud-init modules --mode=final'
+    exec /usr/local/sbin/cloudinit-scrub-linuxuser'
   when: >-
     'linuxuser' in (cloudinit_status.stdout | default(''))
     or 'status: running' in (cloudinit_status.stdout | default(''))
