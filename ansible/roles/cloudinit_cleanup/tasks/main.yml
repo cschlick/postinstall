@@ -93,7 +93,7 @@
   ansible.builtin.copy:
     dest: /etc/cloud/cloud.cfg.d/99-default-user.cfg
     content: |
-      # {{ ansible_managed }}
+      # Managed by Ansible (roles/cloudinit_cleanup).
       # default_user 'linuxuser' is purged by the accounts role; point cloud-init
       # at {{ cloudinit_default_user }} so its modules don't fail on a missing user.
       system_info:
