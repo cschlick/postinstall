@@ -6,7 +6,12 @@ LATEST={{ motd_apply_log }}
 
 printf " cloud-init: "
 if command -v cloud-init >/dev/null 2>&1; then
-    cloud-init status 2>/dev/null | awk '/^status:/ { print $2 }'
+    ci_status=$(cloud-init status 2>/dev/null | awk '/^status:/ { print $2 }')
+    printf "%s\n" "$ci_status"
+    if [ "$ci_status" = "error" ]; then
+        cloud-init status --long 2>/dev/null | sed 's/^/             /'
+        printf "             log: /var/log/cloud-init.log\n"
+    fi
 else
     printf "not installed\n"
 fi
