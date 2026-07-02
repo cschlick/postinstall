@@ -8,8 +8,9 @@ each behind a tag so you can run any subset.
 ## Cheat sheet
 
 ```bash
-bash apply.sh                     # pull latest from GitLab + apply to THIS host
-GW_NODE=1 bash apply.sh           # same, with the locked-down gw_node profile
+bash apply.sh                     # pull latest from GitLab + apply to THIS host (default profile)
+BASTION=1 bash apply.sh           # same, bastion profile (public SSH + ProxyJump)
+GW_NODE=1 bash apply.sh           # same, gw_node profile (mesh-only SSH, locked down)
 IMAGE_BUILD=1 bash apply.sh       # image build (then snapshot in the Vultr panel)
 bash apply_gw.sh                  # greasewood role only — fast iteration
 
@@ -61,21 +62,23 @@ and tag (`region_ewr`, `tag_gw_node`, …). Roll out safely — canary first:
 Extra args pass through to ansible (`--limit`, `--check`, `-e ...`).
 `check`/`apply` warn about hosts tagged neither `bastion` nor `gw_node`.
 
-## Host profiles: bastion vs gw_node
+## Profiles
 
-SSH exposure is chosen per host by a **Vultr tag** — the dynamic inventory
-attaches `group_vars/tag_<tag>.yml` to the auto-created `tag_<tag>` group:
+Three profiles decide a host's SSH exposure. Each is a vars file in
+`ansible/group_vars/`; you select one **locally** with an env flag on
+`apply.sh`, or **fleet-wide** by tagging the instance in Vultr (the dynamic
+inventory attaches `tag_<tag>.yml` to the auto-created `tag_<tag>` group):
 
-| Tag | SSH reachable on | Forwarding |
-|-----|------------------|------------|
-| `bastion` | public internet **and** `gw-mesh` | ProxyJump only (`PermitOpen *:22`), no agent forwarding |
-| `gw_node` | `gw-mesh` overlay only | none (`DisableForwarding yes`) |
-| *(untagged)* | public internet (lockout-safe **default**) | none |
+| Profile | SSH reachable on | Forwarding | Apply to localhost | Apply via fleet |
+|---------|------------------|------------|--------------------|-----------------|
+| **default** | public internet | none | `bash apply.sh` | untagged instance |
+| **bastion** | public internet **and** `gw-mesh` | ProxyJump only (`PermitOpen *:22`) | `BASTION=1 bash apply.sh` | tag `bastion`, `./fleet.sh apply --limit tag_bastion` |
+| **gw_node** | `gw-mesh` overlay only | none (`DisableForwarding yes`) | `GW_NODE=1 bash apply.sh` | tag `gw_node`, `./fleet.sh apply --limit tag_gw_node` |
 
-Tag a node **either** `bastion` **or** `gw_node`, never both, and tag it
-`gw_node` only **after** it is reachable over the mesh. Locally,
-`GW_NODE=1 bash apply.sh` applies the same profile without the API. Reach
-gw_nodes through the bastion:
+The default is the lockout-safe baseline: a brand-new or untagged node always
+comes up publicly reachable. Tag a node **either** `bastion` **or** `gw_node`,
+never both, and apply gw_node only **after** the node is reachable over the
+mesh (the Vultr console is the fallback). Reach gw_nodes through the bastion:
 
 ```sshconfig
 Host bastion

@@ -17,7 +17,8 @@ ssh_authorized_keys:
     - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICUwH1LPReemNHtkCd9uBkfm/ht1kmtqUPz+acu6yL0N pm-backup-key"
     - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDMJYAQXgI0OjStnC/UvM9i2AhzVe1lprHM66Y0J02Pq bastion"
 ssh_allow_users: ["pmuser"]   # only this user may log in over SSH (AllowUsers)
-ssh_allow_proxy_jump: true    # this host is a bastion — enable ProxyJump
+# ssh_allow_proxy_jump is NOT set here: it belongs to the bastion profile
+# (group_vars/tag_bastion.yml, or BASTION=1 bash apply.sh locally).
 
 # --- accounts role: emergency console password for pmuser ---
 # sha512crypt hash of pmuser's Vultr-console password. SSH password auth is off,
