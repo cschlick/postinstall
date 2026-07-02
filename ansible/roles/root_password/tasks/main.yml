@@ -1,22 +1,21 @@
 ---
-# Remove the root password ENTIRELY: the password (2nd) field of root's
-# /etc/shadow entry must be empty — not a hash, and NOT a disabled/locked
-# marker ('!' or '*'). `passwd --delete` empties the field outright; locking
-# (passwd -l / the user module's password_lock) would instead leave '!' in
-# front of the existing hash, which is the "disabled password" we explicitly
-# do not want here.
+# Lock the root password: the password (2nd) field of root's /etc/shadow entry
+# must be exactly '!' — not a hash, and not EMPTY. An empty field is "no
+# password" (passwd -d semantics): our PAM stack has no nullok so normal
+# console/su/ssh paths reject it, but sulogin and other recovery paths treat
+# "no password" as free entry, which a locked ('!') field never is.
 #
-# Safe because the `pam` role strips nullok from pam_unix, so an empty hash
-# CANNOT authenticate (console, su or sudo); combined with the ssh role
-# (key-only auth, AllowUsers pmuser) root is left with no password login path.
+# passwd --lock prepends '!' to whatever is in the field, so on a host where
+# the field was already emptied it becomes exactly '!'. If a hash is present
+# it becomes '!<hash>' — also locked; we then normalise to plain '!' so no
+# usable hash lingers in the file.
 - name: Read root's shadow entry
   ansible.builtin.getent:
     database: shadow
     key: root
 
-# getent_shadow['root'][0] is the password field. Only act when it is
-# non-empty, so a second run (field already empty) is a clean no-op.
-- name: Remove the root password entirely (empty the shadow hash field)
-  ansible.builtin.command:
-    cmd: passwd --delete root
-  when: (ansible_facts.getent_shadow['root'][0] | default('')) | length > 0
+- name: Lock the root password (shadow field becomes '!')
+  ansible.builtin.user:
+    name: root
+    password: "!"
+  when: (ansible_facts.getent_shadow['root'][0] | default('')) != '!'

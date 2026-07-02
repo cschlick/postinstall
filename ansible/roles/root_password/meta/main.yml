@@ -2,7 +2,7 @@
 galaxy_info:
   role_name: root_password
   author: cschlick
-  description: Remove the root password entirely (empty the /etc/shadow field, not just lock it)
+  description: Lock the root password (set the /etc/shadow field to '!', no usable hash)
   license: MIT
   min_ansible_version: "2.15"
   platforms:

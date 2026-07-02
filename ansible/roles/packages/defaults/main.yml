@@ -17,6 +17,9 @@ packages_install:
 # by the apt module against installed packages.
 packages_remove:
   - ufw
+  # fail2ban was banning into the void (no nft integration) and sshd's
+  # built-in PerSourcePenalties covers brute-force throttling in-daemon.
+  - fail2ban
 
   # === build toolchain / dev headers (not needed at runtime) ===
   - build-essential

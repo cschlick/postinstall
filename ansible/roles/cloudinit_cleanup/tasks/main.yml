@@ -52,7 +52,33 @@
     - cloudinit_sshd_dropin.changed
     - cloudinit_sshd_t.rc | default(0) != 0
 
-# 3. Optionally stop cloud-init running on future boots.
+# 3. Kill the Vultr image's cloud-init log reader. It runs
+#    `less /var/log/cloud-init.log` as root on a TTY — less's shell escape
+#    (!sh) makes that an unauthenticated root shell for anyone with console
+#    access. Provisioning info is long since read; mask it permanently.
+- name: Check whether cloud-init-log-reader.service exists
+  ansible.builtin.command: systemctl cat cloud-init-log-reader.service
+  register: cloudinit_log_reader
+  changed_when: false
+  failed_when: false
+
+- name: Stop, disable and mask cloud-init-log-reader.service
+  ansible.builtin.systemd_service:
+    name: cloud-init-log-reader.service
+    state: stopped
+    enabled: false
+    masked: true
+  when: cloudinit_log_reader.rc == 0
+
+# 4. Remove root's authorized_keys (cloud-init installs the Vultr account key
+#    there). PermitRootLogin no + AllowUsers pmuser make it unreachable today,
+#    but unreachable keys have a way of becoming reachable after a refactor.
+- name: Remove root's authorized_keys
+  ansible.builtin.file:
+    path: /root/.ssh/authorized_keys
+    state: absent
+
+# 5. Optionally stop cloud-init running on future boots.
 - name: Stat /etc/cloud
   ansible.builtin.stat:
     path: /etc/cloud

@@ -34,6 +34,13 @@ group_prune:
   - user: pmuser
     groups: [cdrom, floppy, audio, dip, video, plugdev, users, netdev]
 
+# --- unattended_upgrades role ---
+# Reboot automatically when an update needs it (kernel security fixes are the
+# one thing unattended-upgrades can't finish without one; without this the
+# running kernel drifts behind the installed one indefinitely).
+unattended_upgrades_automatic_reboot: true
+unattended_upgrades_reboot_time: "02:00"
+
 # --- Vultr image build ---
 # false = configure THIS live box (default). true = build a generalized,
 # cloud-init-ready image: adds the cloud_init + image_generalize roles. Set via

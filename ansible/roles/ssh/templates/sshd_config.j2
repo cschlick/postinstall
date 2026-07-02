@@ -25,6 +25,9 @@ AllowUsers {{ ssh_allow_users | join(' ') }}
 {% endif %}
 
 # Session hardening
+# PerSourcePenalties is on by default in OpenSSH >= 9.8; stated explicitly as
+# it is the brute-force throttle here (fail2ban was purged in its favour).
+PerSourcePenalties yes
 LoginGraceTime 30
 MaxAuthTries 3
 MaxSessions 2

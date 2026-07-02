@@ -1,5 +1,5 @@
 ---
-# This role takes no tunables: it unconditionally empties root's /etc/shadow
-# password field. Kept for parity with the other roles and as the documented
-# home for any future toggle. To skip the role entirely, use:
+# This role takes no tunables: it unconditionally locks root's /etc/shadow
+# password field to '!'. Kept for parity with the other roles and as the
+# documented home for any future toggle. To skip the role entirely, use:
 #   ansible-playbook site.yml --skip-tags root_password

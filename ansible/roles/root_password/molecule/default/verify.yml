@@ -8,11 +8,11 @@
         database: shadow
         key: root
 
-    - name: Assert root's password field is completely empty
+    - name: Assert root's password field is exactly '!' (locked, no hash)
       ansible.builtin.assert:
         quiet: true
         that:
-          # [0] is the password field. Must be empty — not a hash, not '!'/'*'.
-          # Default to a non-empty sentinel so a missing field fails loudly.
-          - (ansible_facts.getent_shadow['root'][0] | default('NONEMPTY')) | length == 0
-        fail_msg: "root password field is '{{ ansible_facts.getent_shadow['root'][0] | default('<missing>') }}', expected empty"
+          # [0] is the password field. Must be '!' — locked, with no usable
+          # hash behind it. Not empty (sulogin treats that as free entry).
+          - (ansible_facts.getent_shadow['root'][0] | default('')) == '!'
+        fail_msg: "root password field is '{{ ansible_facts.getent_shadow['root'][0] | default('<missing>') }}', expected '!'"
