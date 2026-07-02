@@ -2,6 +2,10 @@
 - name: Harden a headless Debian host
   hosts: all
   become: true
+  # Node profile: base (default) or gw_node (interior mesh node; SSH scoped to
+  # gw-mesh). apply.sh reads /etc/postinstall-profile, or PROFILE=gw_node.
+  vars_files:
+    - "profiles/{{ profile | default('base') }}.yml"
   roles:
     - role: hostname
       tags: [hostname]

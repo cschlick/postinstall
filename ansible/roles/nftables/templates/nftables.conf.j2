@@ -42,7 +42,7 @@ table inet filter {
         # SSH — IPv6 only, by design (matches the original ruleset). No rate
         # limit: an accept-side limiter fails INTO the drop policy past the
         # threshold, locking out legitimate bursts/reconnects.
-        ip6 saddr ::/0 tcp dport {{ nftables_ssh_port }} ct state new accept
+        {% if nftables_ssh_iface %}iifname "{{ nftables_ssh_iface }}" {% endif %}ip6 saddr ::/0 tcp dport {{ nftables_ssh_port }} ct state new accept
 
 {% for port in nftables_extra_tcp_ports %}
         # Extra allowed inbound TCP (IPv4 and IPv6).
