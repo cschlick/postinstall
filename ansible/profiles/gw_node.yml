@@ -1,5 +1,0 @@
----
-# Profile: gw_node — an interior mesh node, reached via the bastion.
-# SSH accepts only on the greasewood overlay; the public NIC has no TCP
-# listener at all. Break-glass is the Vultr console (emergency password).
-nftables_ssh_iface: gw-mesh

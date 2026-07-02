@@ -5,18 +5,12 @@
 #
 # IMAGE_BUILD=1 bash apply.sh  -> also runs the cloud_init + image_generalize
 # roles to produce a generalized, cloud-init-ready Vultr image. Snapshot afterward.
-#
-# Node profile (ansible/profiles/*.yml): read from /etc/postinstall-profile,
-# overridable with PROFILE=gw_node bash apply.sh. Unset -> base. To make a node
-# permanently a mesh-interior node:  echo gw_node | sudo tee /etc/postinstall-profile
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO="https://gitlab.com/cschlick/postinstall.git"
 
-PROFILE="${PROFILE:-$(cat /etc/postinstall-profile 2>/dev/null || echo base)}"
-
-EXTRA=(-e "profile=$PROFILE")
+EXTRA=()
 [ "${IMAGE_BUILD:-0}" = 1 ] && EXTRA+=(-e image_build=true)
 
 # Ensure galaxy collections are present (idempotent; fast when already installed).
