@@ -16,6 +16,7 @@ ssh_authorized_keys:
     - "sk-ecdsa-sha2-nistp256@openssh.com AAAAInNrLWVjZHNhLXNoYTItbmlzdHAyNTZAb3BlbnNzaC5jb20AAAAIbmlzdHAyNTYAAABBBMNkT0CS8ogoE5SirI4jbaPLEeWA8ux5shGoyd23agRfSeqvR/9JQYzVt3dKXPORwFKL6vC/KIrqeD9k2OGyWM0AAAAEc3NoOg== melvin-enclave"
     - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICUwH1LPReemNHtkCd9uBkfm/ht1kmtqUPz+acu6yL0N pm-backup-key"
 ssh_allow_users: ["pmuser"]   # only this user may log in over SSH (AllowUsers)
+ssh_allow_proxy_jump: true    # this host is a bastion — enable ProxyJump
 
 # --- accounts role: emergency console password for pmuser ---
 # sha512crypt hash of pmuser's Vultr-console password. SSH password auth is off,

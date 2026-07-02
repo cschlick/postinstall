@@ -21,3 +21,7 @@ ssh_authorized_keys: {}
 # (additive — routine runs never remove a key by surprise); turn it on only for
 # a deliberate rotation, e.g. -e ssh_authorized_keys_exclusive=true.
 ssh_authorized_keys_exclusive: false
+
+# Set to true on jump/bastion hosts. Enables AllowTcpForwarding and drops
+# DisableForwarding + PermitOpen none, which together block ProxyJump.
+ssh_allow_proxy_jump: false

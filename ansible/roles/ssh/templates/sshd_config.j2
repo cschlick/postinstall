@@ -33,11 +33,13 @@ Compression no
 
 # Disable unused features
 X11Forwarding no
-AllowTcpForwarding no
+AllowTcpForwarding {{ 'yes' if ssh_allow_proxy_jump else 'no' }}
 AllowAgentForwarding no
 AllowStreamLocalForwarding no
+{% if not ssh_allow_proxy_jump %}
 DisableForwarding yes
 PermitOpen none
+{% endif %}
 PermitListen none
 PermitTunnel no
 PrintMotd no
