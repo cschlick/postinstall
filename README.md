@@ -417,8 +417,9 @@ Host gw-*
 ssh gw-web01      # = ssh -J bastion, transparently
 ```
 
-(The bastion's `ssh_permit_open` is `*:22` — it can only forward to SSH, nothing
-else. Tighten to `<gw-mesh-cidr>:22` if you want to restrict it to mesh hosts.)
+(With `ssh_allow_proxy_jump: true` the bastion forwards to the SSH port only
+(`PermitOpen *:22`) — it can jump to SSH, nothing else. Agent forwarding stays
+off, so your keys never touch the bastion.)
 
 ## Testing (Molecule)
 
