@@ -43,15 +43,18 @@
     label: "{{ item.name }}"
 
 # ── 3. Sudoers ──────────────────────────────────────────────────────────────
-- name: Grant passwordless sudo
+# Passwordless sudo only for the specific commands listed per user
+# (nopasswd_sudo_commands); everything else prompts for the user's password.
+# Overwrites any previous blanket NOPASSWD: ALL grant at the same path.
+- name: Grant passwordless sudo for listed commands
   ansible.builtin.copy:
-    content: "{{ item.name }} ALL=(ALL) NOPASSWD: ALL\n"
+    content: "{{ item.name }} ALL=(ALL) NOPASSWD: {{ item.nopasswd_sudo_commands | join(', ') }}\n"
     dest: "/etc/sudoers.d/{{ item.name }}-nopasswd"
     owner: root
     group: root
     mode: "0440"
     validate: visudo -cf %s
-  loop: "{{ accounts_present | selectattr('nopasswd_sudo', 'defined') | selectattr('nopasswd_sudo') | list }}"
+  loop: "{{ accounts_present | selectattr('nopasswd_sudo_commands', 'defined') | list }}"
   loop_control:
     label: "{{ item.name }}"
 
