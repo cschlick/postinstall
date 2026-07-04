@@ -55,12 +55,12 @@ import json, sys
 d = json.load(sys.stdin)
 allh = set(d.get("_meta", {}).get("hostvars", {}))
 grouped = set()
-for g in ("base", "bastion", "dev", "gw_node"):
+for g in ("open", "bastion", "dev", "gw_node"):
     grouped |= set(d.get(g, {}).get("hosts", []))
 print("\n".join(sorted(allh - grouped)))
 ' 2>/dev/null)" || return 0
   if [ -n "$stragglers" ]; then
-    echo "fleet.sh: WARNING — these hosts are in no profile group (base/bastion/dev/gw_node)" >&2
+    echo "fleet.sh: WARNING — these hosts are in no profile group (open/bastion/dev/gw_node)" >&2
     echo "          and will use the permissive DEFAULT profile (public SSH):" >&2
     printf '            %s\n' $stragglers >&2
     echo >&2

@@ -9,7 +9,7 @@ each behind a tag so you can run any subset.
 
 ```bash
 bash apply.sh                     # pull latest from GitLab + apply to THIS host (default profile)
-BASE=1 bash apply.sh              # same, base profile (bastion + password SSH stays on)
+OPEN=1 bash apply.sh              # same, open profile (bastion + password SSH stays on)
 BASTION=1 bash apply.sh           # same, bastion profile (public SSH + ProxyJump)
 DEV=1 bash apply.sh               # same, dev profile (bastion + Claude Code)
 GW_NODE=1 bash apply.sh           # same, gw_node profile (mesh-only SSH, locked down)
@@ -36,8 +36,9 @@ Vultr startup-script field (fill in a single-use enrollment token first).
 ## Fleet mode
 
 The fleet is a hand-kept list in `ansible/inventory/hosts.yml`: each host
-(IP or hostname) goes under exactly one profile group — `bastion`, `dev`, or
-`gw_node` — and the matching `group_vars/<profile>.yml` applies automatically.
+(IP or hostname) goes under exactly one profile group — `open`, `bastion`,
+`dev`, or `gw_node` — and the matching `group_vars/<profile>.yml` applies
+automatically.
 Connections are plain SSH as **pmuser**: the control machine needs pmuser's
 private key, and runs need `-K` (sudo prompts for pmuser's password — the
 emergency console password; only `gw` is NOPASSWD). gw_nodes are listed by
@@ -68,12 +69,12 @@ Profiles decide a host's SSH exposure. Each is a vars file in
 | Profile | SSH reachable on | Forwarding | Apply to localhost | Apply via fleet |
 |---------|------------------|------------|--------------------|-----------------|
 | **default** | public internet | none | `bash apply.sh` | host in no profile group |
-| **base** | public internet **and** `gw-mesh` — password SSH allowed | ProxyJump only | `BASE=1 bash apply.sh` | group `base`, `./fleet.sh apply --limit base` |
+| **open** | public internet **and** `gw-mesh` — password SSH allowed | ProxyJump only | `OPEN=1 bash apply.sh` | group `open`, `./fleet.sh apply --limit open` |
 | **bastion** | public internet **and** `gw-mesh` | ProxyJump only (`PermitOpen *:22`) | `BASTION=1 bash apply.sh` | group `bastion`, `./fleet.sh apply --limit bastion` |
 | **dev** | public internet **and** `gw-mesh` | ProxyJump only | `DEV=1 bash apply.sh` | group `dev`, `./fleet.sh apply --limit dev` |
 | **gw_node** | `gw-mesh` overlay only | none (`DisableForwarding yes`) | `GW_NODE=1 bash apply.sh` | group `gw_node`, `./fleet.sh apply --limit gw_node` |
 
-base = bastion + SSH password login left ON (pmuser's emergency password;
+open = bastion + SSH password login left ON (pmuser's emergency password;
 faillock and PerSourcePenalties still throttle guessing). dev = bastion +
 Claude Code (installed for pmuser and updated on every apply).
 The default is the lockout-safe baseline: a brand-new or unlisted node always

@@ -1,11 +1,11 @@
 ---
-# The base profile — bastion (public SSH + ProxyJump forwarding) that ALSO
+# The open profile — bastion (public SSH + ProxyJump forwarding) that ALSO
 # accepts SSH password login. Normally the ssh role switches password auth off
 # automatically once a key is in ssh_authorized_keys; this pins it on, so
 # pmuser can log in over SSH with the emergency console password. AllowUsers,
 # faillock and sshd's PerSourcePenalties still apply. Hosts listed under the
-# base group in inventory/hosts.yml, or locally via BASE=1 bash apply.sh. Put
-# a host in exactly ONE of the base / bastion / dev / gw_node groups.
+# open group in inventory/hosts.yml, or locally via OPEN=1 bash apply.sh. Put
+# a host in exactly ONE of the open / bastion / dev / gw_node groups.
 
 # SSH open to the public internet.
 nftables_ssh_public: true

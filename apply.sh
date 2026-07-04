@@ -7,7 +7,7 @@
 # roles to produce a generalized, cloud-init-ready Vultr image. Snapshot afterward.
 #
 # Profiles (default: public SSH, no forwarding — the lockout-safe baseline):
-#   BASE=1 bash apply.sh     -> base profile: bastion + SSH password auth stays on
+#   OPEN=1 bash apply.sh     -> open profile: bastion + SSH password auth stays on
 #   BASTION=1 bash apply.sh  -> bastion profile: public SSH + ProxyJump forwarding
 #   DEV=1 bash apply.sh      -> dev profile: bastion + Claude Code (kept current)
 #   GW_NODE=1 bash apply.sh  -> gw_node profile: SSH only on the gw-mesh overlay,
@@ -20,7 +20,7 @@ REPO="https://gitlab.com/cschlick/postinstall.git"
 
 EXTRA=()
 [ "${IMAGE_BUILD:-0}" = 1 ] && EXTRA+=(-e image_build=true)
-[ "${BASE:-0}" = 1 ] && EXTRA+=(-e @"$ROOT/ansible/group_vars/base.yml")
+[ "${OPEN:-0}" = 1 ] && EXTRA+=(-e @"$ROOT/ansible/group_vars/open.yml")
 [ "${BASTION:-0}" = 1 ] && EXTRA+=(-e @"$ROOT/ansible/group_vars/bastion.yml")
 [ "${DEV:-0}" = 1 ] && EXTRA+=(-e @"$ROOT/ansible/group_vars/dev.yml")
 [ "${GW_NODE:-0}" = 1 ] && EXTRA+=(-e @"$ROOT/ansible/group_vars/gw_node.yml")
