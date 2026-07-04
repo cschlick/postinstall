@@ -9,6 +9,7 @@ each behind a tag so you can run any subset.
 
 ```bash
 bash apply.sh                     # pull latest from GitLab + apply to THIS host (default profile)
+BASE=1 bash apply.sh              # same, base profile (bastion + password SSH stays on)
 BASTION=1 bash apply.sh           # same, bastion profile (public SSH + ProxyJump)
 DEV=1 bash apply.sh               # same, dev profile (bastion + Claude Code)
 GW_NODE=1 bash apply.sh           # same, gw_node profile (mesh-only SSH, locked down)
@@ -67,11 +68,14 @@ Profiles decide a host's SSH exposure. Each is a vars file in
 | Profile | SSH reachable on | Forwarding | Apply to localhost | Apply via fleet |
 |---------|------------------|------------|--------------------|-----------------|
 | **default** | public internet | none | `bash apply.sh` | host in no profile group |
+| **base** | public internet **and** `gw-mesh` — password SSH allowed | ProxyJump only | `BASE=1 bash apply.sh` | group `base`, `./fleet.sh apply --limit base` |
 | **bastion** | public internet **and** `gw-mesh` | ProxyJump only (`PermitOpen *:22`) | `BASTION=1 bash apply.sh` | group `bastion`, `./fleet.sh apply --limit bastion` |
 | **dev** | public internet **and** `gw-mesh` | ProxyJump only | `DEV=1 bash apply.sh` | group `dev`, `./fleet.sh apply --limit dev` |
 | **gw_node** | `gw-mesh` overlay only | none (`DisableForwarding yes`) | `GW_NODE=1 bash apply.sh` | group `gw_node`, `./fleet.sh apply --limit gw_node` |
 
-dev = bastion + Claude Code (installed for pmuser and updated on every apply).
+base = bastion + SSH password login left ON (pmuser's emergency password;
+faillock and PerSourcePenalties still throttle guessing). dev = bastion +
+Claude Code (installed for pmuser and updated on every apply).
 The default is the lockout-safe baseline: a brand-new or unlisted node always
 comes up publicly reachable. Put a host in exactly **one** profile group, and
 move it into gw_node only **after** it is reachable over the mesh (the Vultr
