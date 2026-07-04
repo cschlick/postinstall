@@ -7,8 +7,11 @@
 # open group in inventory/hosts.yml, or locally via OPEN=1 bash apply.sh. Put
 # a host in exactly ONE of the open / bastion / dev / gw_node groups.
 
-# SSH open to the public internet.
+# SSH open to the public internet — over IPv4 as well as IPv6 (the other
+# profiles are IPv6-only): sshd listens on 0.0.0.0 and the firewall accepts.
 nftables_ssh_public: true
+nftables_ssh_ipv4: true
+ssh_listen_ipv4: true
 
 # Serve as a ProxyJump host: SSH-only local forwarding (ssh -J), agent
 # forwarding stays off. See ssh_allow_proxy_jump in roles/ssh/defaults.

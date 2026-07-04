@@ -12,3 +12,7 @@ nftables_extra_tcp_ports: []
 # restricts SSH to the VPN overlay interface (nftables_ssh_iifname) only.
 nftables_ssh_public: true
 nftables_ssh_iifname: gw-mesh
+
+# Also accept SSH over IPv4 (open profile; pair with ssh_listen_ipv4 so sshd
+# actually listens on 0.0.0.0). Default: IPv6-only, like everything else.
+nftables_ssh_ipv4: false

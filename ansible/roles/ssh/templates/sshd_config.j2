@@ -4,9 +4,16 @@
 Include /etc/ssh/sshd_config.d/*.conf
 
 Port {{ ssh_port }}
+{% if ssh_listen_ipv4 %}
+# IPv4 + IPv6 (open profile) — the firewall opens both families too.
+AddressFamily any
+ListenAddress ::
+ListenAddress 0.0.0.0
+{% else %}
 # IPv6-only; IPv4 is blocked at the firewall (no 0.0.0.0:22 listener).
 AddressFamily inet6
 ListenAddress ::
+{% endif %}
 
 # Offer only Ed25519 and RSA host keys (no NIST ECDSA; see algorithms below).
 HostKey /etc/ssh/ssh_host_ed25519_key

@@ -1,6 +1,9 @@
 ---
 ssh_port: 22
 ssh_permit_root_login: "no"
+# Listen on IPv4 as well as IPv6 (open profile; pair with nftables_ssh_ipv4
+# so the firewall lets IPv4 through too). Default: IPv6-only.
+ssh_listen_ipv4: false
 # Password auth turns OFF automatically once at least one key is present in
 # ssh_authorized_keys; until then it stays ON so you can't be locked out. Set
 # this explicitly to "yes" or "no" to override the automatic behaviour.

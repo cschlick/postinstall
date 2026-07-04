@@ -69,7 +69,7 @@ Profiles decide a host's SSH exposure. Each is a vars file in
 | Profile | SSH reachable on | Forwarding | Apply to localhost | Apply via fleet |
 |---------|------------------|------------|--------------------|-----------------|
 | **default** | public internet | none | `bash apply.sh` | host in no profile group |
-| **open** | public internet **and** `gw-mesh` — password SSH allowed | ProxyJump only | `OPEN=1 bash apply.sh` | group `open`, `./fleet.sh apply --limit open` |
+| **open** | public internet (IPv4 **and** IPv6) **and** `gw-mesh` — password SSH allowed | ProxyJump only | `OPEN=1 bash apply.sh` | group `open`, `./fleet.sh apply --limit open` |
 | **bastion** | public internet **and** `gw-mesh` | ProxyJump only (`PermitOpen *:22`) | `BASTION=1 bash apply.sh` | group `bastion`, `./fleet.sh apply --limit bastion` |
 | **dev** | public internet **and** `gw-mesh` | ProxyJump only | `DEV=1 bash apply.sh` | group `dev`, `./fleet.sh apply --limit dev` |
 | **gw_node** | `gw-mesh` overlay only | none (`DisableForwarding yes`) | `GW_NODE=1 bash apply.sh` | group `gw_node`, `./fleet.sh apply --limit gw_node` |
