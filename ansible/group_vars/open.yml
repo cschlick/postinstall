@@ -16,3 +16,7 @@ ssh_allow_proxy_jump: true
 
 # Keep SSH password authentication ON (pmuser + emergency console password).
 ssh_password_authentication: "yes"
+
+# Don't purge any accounts (the other profiles remove linuxuser and user) —
+# an open box may be a pre-existing machine whose users should survive.
+accounts_purge: []
