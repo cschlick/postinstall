@@ -1,9 +1,9 @@
 ---
 # The dev profile — a bastion that is also a development box: everything the
 # bastion profile enables (public SSH + ProxyJump forwarding) plus Claude Code,
-# installed and kept current on every apply. Applied to Vultr instances tagged
-# "dev" (fleet mode) or locally with DEV=1 bash apply.sh. Tag a node with
-# exactly ONE of bastion / gw_node / dev.
+# installed and kept current on every apply. Hosts listed under the dev group
+# in inventory/hosts.yml, or locally via DEV=1 bash apply.sh. Put a host in
+# exactly ONE of the bastion / dev / gw_node groups.
 
 # SSH open to the public internet.
 nftables_ssh_public: true

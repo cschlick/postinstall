@@ -3,4 +3,3 @@
 collections:
   - name: ansible.posix      # sysctl, mount, authorized_key
   - name: community.general  # misc helpers used by later roles
-  - name: vultr.cloud        # Vultr dynamic inventory (inventory/vultr.yml)

@@ -19,9 +19,9 @@ REPO="https://gitlab.com/cschlick/postinstall.git"
 
 EXTRA=()
 [ "${IMAGE_BUILD:-0}" = 1 ] && EXTRA+=(-e image_build=true)
-[ "${BASTION:-0}" = 1 ] && EXTRA+=(-e @"$ROOT/ansible/group_vars/tag_bastion.yml")
-[ "${DEV:-0}" = 1 ] && EXTRA+=(-e @"$ROOT/ansible/group_vars/tag_dev.yml")
-[ "${GW_NODE:-0}" = 1 ] && EXTRA+=(-e @"$ROOT/ansible/group_vars/tag_gw_node.yml")
+[ "${BASTION:-0}" = 1 ] && EXTRA+=(-e @"$ROOT/ansible/group_vars/bastion.yml")
+[ "${DEV:-0}" = 1 ] && EXTRA+=(-e @"$ROOT/ansible/group_vars/dev.yml")
+[ "${GW_NODE:-0}" = 1 ] && EXTRA+=(-e @"$ROOT/ansible/group_vars/gw_node.yml")
 
 # Ensure galaxy collections are present (idempotent; fast when already installed).
 ansible-galaxy collection install -r "$ROOT/ansible/requirements.yml"

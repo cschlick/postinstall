@@ -1,0 +1,19 @@
+---
+# The gw_node profile — hosts listed under the gw_node group in
+# inventory/hosts.yml, or locally via GW_NODE=1 bash apply.sh. Every host
+# outside a profile group keeps the permissive default of public SSH, so you
+# can't lock yourself out before a node's mesh is up.
+#
+# Move a host into this group only AFTER it is reachable over the gw-mesh
+# overlay — use its mesh address in the inventory. The control machine reaches
+# it through the bastion; either configure ProxyJump in ~/.ssh/config or
+# uncomment (and set the bastion address):
+# ansible_ssh_common_args: '-o ProxyJump=pmuser@<bastion-public-ip>'
+
+# Restrict SSH to the gw-mesh overlay interface only — no public SSH.
+nftables_ssh_public: false
+
+# No forwarding of any kind. This is already the default (ssh_allow_proxy_jump
+# false -> DisableForwarding yes), pinned here so a gw_node stays locked down
+# even if the defaults ever loosen.
+ssh_allow_proxy_jump: false

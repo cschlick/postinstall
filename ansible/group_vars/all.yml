@@ -1,6 +1,6 @@
 ---
-# Defaults for the target(s). Override per-host in host_vars/<name>.yml; keep
-# secrets in ansible-vault.
+# Defaults for the target(s). Override per-profile in group_vars/<profile>.yml
+# or per-host in host_vars/<name>.yml.
 
 # --- connection (remote fleet) ---
 # The hardening allows only pmuser over SSH, so connect as pmuser. Ignored for
@@ -18,7 +18,7 @@ ssh_authorized_keys:
     - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIN4HDthJiYBwD50vAxP6+wBaoCB45W8Dtul22NrXdUHO bastion"
 ssh_allow_users: ["pmuser"]   # only this user may log in over SSH (AllowUsers)
 # ssh_allow_proxy_jump is NOT set here: it belongs to the bastion profile
-# (group_vars/tag_bastion.yml, or BASTION=1 bash apply.sh locally).
+# (group_vars/bastion.yml, or BASTION=1 bash apply.sh locally).
 
 # --- accounts role: emergency console password for pmuser ---
 # sha512crypt hash of pmuser's Vultr-console password. SSH password auth is off,

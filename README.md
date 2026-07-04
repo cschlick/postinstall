@@ -15,9 +15,9 @@ GW_NODE=1 bash apply.sh           # same, gw_node profile (mesh-only SSH, locked
 IMAGE_BUILD=1 bash apply.sh       # image build (then snapshot in the Vultr panel)
 bash apply_gw.sh                  # greasewood role only — fast iteration
 
-./fleet.sh list                   # fleet mode: discover Vultr instances
-./fleet.sh check --limit tag_gw_node   # dry-run one group
-./fleet.sh apply                  # apply to the whole fleet
+./fleet.sh list                   # fleet mode: list inventory hosts + groups
+./fleet.sh check --limit gw_node  # dry-run one profile group
+./fleet.sh apply                  # apply to the whole fleet over SSH
 ./fleet.sh rotate-keys            # apply only the ssh role (key rotation)
 
 bash set-pmuser-password.sh       # rotate pmuser's console password (updates repo)
@@ -34,53 +34,46 @@ Vultr startup-script field (fill in a single-use enrollment token first).
 
 ## Fleet mode
 
-`inventory/vultr.yml` discovers running instances from the Vultr API — no
-hand-kept host list. Auth is either quick or vaulted:
+The fleet is a hand-kept list in `ansible/inventory/hosts.yml`: each host
+(IP or hostname) goes under exactly one profile group — `bastion`, `dev`, or
+`gw_node` — and the matching `group_vars/<profile>.yml` applies automatically.
+Connections are plain SSH as **pmuser**: the control machine needs pmuser's
+private key and the hosts passwordless sudo. gw_nodes are listed by their
+mesh address and reached via the bastion (ProxyJump — see
+`group_vars/gw_node.yml`).
+
+Roll out safely — one group first:
 
 ```bash
-export VULTR_API_KEY=...          # quick: env var, nothing committed
-```
-
-```bash
-# or vaulted (one-time): encrypt the key into inventory/vault.yml
-cd ansible
-echo 'your-vault-passphrase' > ../.vault_pass && chmod 600 ../.vault_pass
-ansible-vault create inventory/vault.yml   # add: vultr_api_key: your-real-key
-```
-
-`fleet.sh` wires in the inventory and vault flags automatically. It connects
-as **pmuser** over each host's public IP and auto-creates groups per region
-and tag (`region_ewr`, `tag_gw_node`, …). Roll out safely — canary first:
-
-```bash
+./fleet.sh list                          # what's in the inventory?
 ./fleet.sh ping                          # reachable as pmuser?
-./fleet.sh check --limit tag_canary      # dry-run one group
-./fleet.sh apply --limit tag_canary      # apply to it
+./fleet.sh check --limit dev             # dry-run one profile group
+./fleet.sh apply --limit dev             # apply to it
 ./fleet.sh apply                         # then the whole fleet
-./fleet.sh local                         # apply the WORKING TREE to this host (no API key)
+./fleet.sh local                         # apply the WORKING TREE to this host
 ```
 
 Extra args pass through to ansible (`--limit`, `--check`, `-e ...`).
-`check`/`apply` warn about hosts tagged neither `bastion` nor `gw_node`.
+`check`/`apply` warn about hosts that sit in no profile group.
 
 ## Profiles
 
-Three profiles decide a host's SSH exposure. Each is a vars file in
+Profiles decide a host's SSH exposure. Each is a vars file in
 `ansible/group_vars/`; you select one **locally** with an env flag on
-`apply.sh`, or **fleet-wide** by tagging the instance in Vultr (the dynamic
-inventory attaches `tag_<tag>.yml` to the auto-created `tag_<tag>` group):
+`apply.sh`, or **fleet-wide** by listing the host under that group in
+`ansible/inventory/hosts.yml`:
 
 | Profile | SSH reachable on | Forwarding | Apply to localhost | Apply via fleet |
 |---------|------------------|------------|--------------------|-----------------|
-| **default** | public internet | none | `bash apply.sh` | untagged instance |
-| **bastion** | public internet **and** `gw-mesh` | ProxyJump only (`PermitOpen *:22`) | `BASTION=1 bash apply.sh` | tag `bastion`, `./fleet.sh apply --limit tag_bastion` |
-| **dev** | public internet **and** `gw-mesh` | ProxyJump only | `DEV=1 bash apply.sh` | tag `dev`, `./fleet.sh apply --limit tag_dev` |
-| **gw_node** | `gw-mesh` overlay only | none (`DisableForwarding yes`) | `GW_NODE=1 bash apply.sh` | tag `gw_node`, `./fleet.sh apply --limit tag_gw_node` |
+| **default** | public internet | none | `bash apply.sh` | host in no profile group |
+| **bastion** | public internet **and** `gw-mesh` | ProxyJump only (`PermitOpen *:22`) | `BASTION=1 bash apply.sh` | group `bastion`, `./fleet.sh apply --limit bastion` |
+| **dev** | public internet **and** `gw-mesh` | ProxyJump only | `DEV=1 bash apply.sh` | group `dev`, `./fleet.sh apply --limit dev` |
+| **gw_node** | `gw-mesh` overlay only | none (`DisableForwarding yes`) | `GW_NODE=1 bash apply.sh` | group `gw_node`, `./fleet.sh apply --limit gw_node` |
 
 dev = bastion + Claude Code (installed for pmuser and updated on every apply).
-The default is the lockout-safe baseline: a brand-new or untagged node always
-comes up publicly reachable. Tag a node with exactly **one** profile tag, and
-apply gw_node only **after** the node is reachable over the mesh (the Vultr
+The default is the lockout-safe baseline: a brand-new or unlisted node always
+comes up publicly reachable. Put a host in exactly **one** profile group, and
+move it into gw_node only **after** it is reachable over the mesh (the Vultr
 console is the fallback). Reach gw_nodes through the bastion:
 
 ```sshconfig
@@ -179,13 +172,13 @@ documents the rest.
 ansible/
   site.yml                 # the playbook — all roles, each tagged
   requirements.yml         # Galaxy collections
-  inventory/vultr.yml      # Vultr dynamic inventory (fleet mode)
+  inventory/hosts.yml      # the fleet: hosts keyed to profile groups (fleet mode)
   group_vars/all.yml       # main tunables (SSH keys, AllowUsers, password hash, …)
-  group_vars/tag_*.yml     # per-tag host profiles (bastion, gw_node)
+  group_vars/<profile>.yml # host profiles (bastion, dev, gw_node)
   roles/<role>/            # one role per hardening concern (+ molecule/ test)
 apply.sh                   # ansible-pull wrapper: fetch latest + apply locally
 apply_gw.sh                # like apply.sh, greasewood role only
-fleet.sh                   # fleet mode wrapper (inventory + vault flags)
+fleet.sh                   # fleet mode wrapper (applies site.yml over SSH)
 gw_node                    # Vultr startup script: birth a locked-down mesh node
 set-pmuser-password.sh     # rotate pmuser's console password hash (in-repo)
 security_report.sh         # read-only attack-surface report
