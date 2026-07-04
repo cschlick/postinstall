@@ -1,0 +1,18 @@
+---
+- name: Prepare
+  hosts: all
+  become: true
+  tasks:
+    # The role installs for pmuser (its default claude_code_user); the bare
+    # container image doesn't have it. curl is needed by the installer pipe.
+    - name: Create pmuser with a home directory
+      ansible.builtin.user:
+        name: pmuser
+        create_home: true
+        shell: /bin/bash
+
+    - name: Install curl
+      ansible.builtin.apt:
+        name: curl
+        state: present
+        update_cache: true

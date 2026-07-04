@@ -1,9 +1,9 @@
 ---
 # The bastion profile — applied to the Vultr instance tagged "bastion" (fleet
 # mode) or locally with BASTION=1 bash apply.sh. It is the ONLY profile that
-# enables forwarding: the untagged default has public SSH but can't ProxyJump.
-# Tag a node EITHER bastion OR gw_node, never both (tag_gw_node would win and
-# lock it down).
+# enables forwarding (along with dev, which extends it): the untagged default
+# has public SSH but can't ProxyJump. Tag a node with exactly ONE of
+# bastion / dev / gw_node (tag_gw_node would win and lock it down).
 
 # SSH open to the public internet.
 nftables_ssh_public: true

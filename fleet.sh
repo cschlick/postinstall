@@ -71,9 +71,9 @@ elif [ -z "${VULTR_API_KEY:-}" ]; then
   exit 1
 fi
 
-# Warn about hosts carrying neither the 'bastion' nor 'gw_node' tag: they fall
-# through to the permissive default profile (public SSH), which is a lockout-safe
-# default but a silent exposure if left that way. Non-fatal — just a heads-up.
+# Warn about hosts carrying none of the profile tags (bastion/dev/gw_node):
+# they fall through to the permissive default profile (public SSH), which is a
+# lockout-safe default but a silent exposure if left that way. Non-fatal.
 preflight_tags() {
   local json stragglers
   json="$(ansible-inventory -i "$INV" "${ARGS[@]}" --list 2>/dev/null)" || return 0
@@ -81,11 +81,13 @@ preflight_tags() {
 import json, sys
 d = json.load(sys.stdin)
 allh = set(d.get("_meta", {}).get("hostvars", {}))
-tagged = set(d.get("tag_bastion", {}).get("hosts", [])) | set(d.get("tag_gw_node", {}).get("hosts", []))
+tagged = set()
+for g in ("tag_bastion", "tag_dev", "tag_gw_node"):
+    tagged |= set(d.get(g, {}).get("hosts", []))
 print("\n".join(sorted(allh - tagged)))
 ' 2>/dev/null)" || return 0
   if [ -n "$stragglers" ]; then
-    echo "fleet.sh: WARNING — these hosts have neither the 'bastion' nor 'gw_node' tag" >&2
+    echo "fleet.sh: WARNING — these hosts have none of the profile tags (bastion/dev/gw_node)" >&2
     echo "          and will use the permissive DEFAULT profile (public SSH):" >&2
     printf '            %s\n' $stragglers >&2
     echo >&2

@@ -8,6 +8,7 @@
 #
 # Profiles (default: public SSH, no forwarding — the lockout-safe baseline):
 #   BASTION=1 bash apply.sh  -> bastion profile: public SSH + ProxyJump forwarding
+#   DEV=1 bash apply.sh      -> dev profile: bastion + Claude Code (kept current)
 #   GW_NODE=1 bash apply.sh  -> gw_node profile: SSH only on the gw-mesh overlay,
 #                               no forwarding. The Vultr console is your fallback
 #                               if mesh SSH isn't up yet.
@@ -19,6 +20,7 @@ REPO="https://gitlab.com/cschlick/postinstall.git"
 EXTRA=()
 [ "${IMAGE_BUILD:-0}" = 1 ] && EXTRA+=(-e image_build=true)
 [ "${BASTION:-0}" = 1 ] && EXTRA+=(-e @"$ROOT/ansible/group_vars/tag_bastion.yml")
+[ "${DEV:-0}" = 1 ] && EXTRA+=(-e @"$ROOT/ansible/group_vars/tag_dev.yml")
 [ "${GW_NODE:-0}" = 1 ] && EXTRA+=(-e @"$ROOT/ansible/group_vars/tag_gw_node.yml")
 
 # Ensure galaxy collections are present (idempotent; fast when already installed).

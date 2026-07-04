@@ -1,0 +1,12 @@
+---
+galaxy_info:
+  role_name: claude_code
+  author: cschlick
+  description: Install Claude Code via the native installer and keep it current
+  license: MIT
+  min_ansible_version: "2.15"
+  platforms:
+    - name: Debian
+      versions:
+        - trixie
+dependencies: []

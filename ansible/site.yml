@@ -21,6 +21,10 @@
       tags: [packages]
     - role: greasewood
       tags: [greasewood]
+    # dev profile only (tag_dev.yml sets claude_code_enabled: true).
+    - role: claude_code
+      when: claude_code_enabled | default(false)
+      tags: [claude_code, dev]
     - role: auditd
       tags: [auditd]
     - role: pwquality

@@ -1,0 +1,16 @@
+---
+# The dev profile — a bastion that is also a development box: everything the
+# bastion profile enables (public SSH + ProxyJump forwarding) plus Claude Code,
+# installed and kept current on every apply. Applied to Vultr instances tagged
+# "dev" (fleet mode) or locally with DEV=1 bash apply.sh. Tag a node with
+# exactly ONE of bastion / gw_node / dev.
+
+# SSH open to the public internet.
+nftables_ssh_public: true
+
+# Serve as a ProxyJump host: SSH-only local forwarding (ssh -J), agent
+# forwarding stays off. See ssh_allow_proxy_jump in roles/ssh/defaults.
+ssh_allow_proxy_jump: true
+
+# Install/update Claude Code (roles/claude_code) for pmuser.
+claude_code_enabled: true

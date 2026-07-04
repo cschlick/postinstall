@@ -1,0 +1,31 @@
+---
+- name: Verify
+  hosts: all
+  become: true
+  tasks:
+    - name: Stat the claude binary
+      ansible.builtin.stat:
+        path: /home/pmuser/.local/bin/claude
+      register: verify_claude_bin
+
+    - name: Assert claude was installed for pmuser
+      ansible.builtin.assert:
+        quiet: true
+        that: verify_claude_bin.stat.exists
+
+    - name: Stat the system-wide symlink
+      ansible.builtin.stat:
+        path: /usr/local/bin/claude
+      register: verify_claude_link
+
+    - name: Assert the symlink points at pmuser's install
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          - verify_claude_link.stat.islnk
+          - verify_claude_link.stat.lnk_target == '/home/pmuser/.local/bin/claude'
+
+    - name: Run claude --version (smoke test)
+      ansible.builtin.command: /usr/local/bin/claude --version
+      become_user: pmuser
+      changed_when: false

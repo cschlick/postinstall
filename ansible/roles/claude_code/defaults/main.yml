@@ -1,0 +1,4 @@
+---
+# User Claude Code is installed for (native installer is per-user: the binary
+# lands in ~/.local/bin/claude and self-updates under that user's home).
+claude_code_user: pmuser

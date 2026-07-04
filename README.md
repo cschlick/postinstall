@@ -10,6 +10,7 @@ each behind a tag so you can run any subset.
 ```bash
 bash apply.sh                     # pull latest from GitLab + apply to THIS host (default profile)
 BASTION=1 bash apply.sh           # same, bastion profile (public SSH + ProxyJump)
+DEV=1 bash apply.sh               # same, dev profile (bastion + Claude Code)
 GW_NODE=1 bash apply.sh           # same, gw_node profile (mesh-only SSH, locked down)
 IMAGE_BUILD=1 bash apply.sh       # image build (then snapshot in the Vultr panel)
 bash apply_gw.sh                  # greasewood role only — fast iteration
@@ -73,12 +74,14 @@ inventory attaches `tag_<tag>.yml` to the auto-created `tag_<tag>` group):
 |---------|------------------|------------|--------------------|-----------------|
 | **default** | public internet | none | `bash apply.sh` | untagged instance |
 | **bastion** | public internet **and** `gw-mesh` | ProxyJump only (`PermitOpen *:22`) | `BASTION=1 bash apply.sh` | tag `bastion`, `./fleet.sh apply --limit tag_bastion` |
+| **dev** | public internet **and** `gw-mesh` | ProxyJump only | `DEV=1 bash apply.sh` | tag `dev`, `./fleet.sh apply --limit tag_dev` |
 | **gw_node** | `gw-mesh` overlay only | none (`DisableForwarding yes`) | `GW_NODE=1 bash apply.sh` | tag `gw_node`, `./fleet.sh apply --limit tag_gw_node` |
 
+dev = bastion + Claude Code (installed for pmuser and updated on every apply).
 The default is the lockout-safe baseline: a brand-new or untagged node always
-comes up publicly reachable. Tag a node **either** `bastion` **or** `gw_node`,
-never both, and apply gw_node only **after** the node is reachable over the
-mesh (the Vultr console is the fallback). Reach gw_nodes through the bastion:
+comes up publicly reachable. Tag a node with exactly **one** profile tag, and
+apply gw_node only **after** the node is reachable over the mesh (the Vultr
+console is the fallback). Reach gw_nodes through the bastion:
 
 ```sshconfig
 Host bastion
@@ -143,6 +146,7 @@ Applied in this order (see `site.yml`). Tag = role name. Run subsets with
 | **nftables** | Drop-by-default `inet filter`: loopback, established, essential ICMP/ICMPv6, SSH (public or mesh-only per `nftables_ssh_public`), greasewood/WireGuard ports. |
 | **packages** | Installs a base set, purges desktop/X/build cruft + ufw + fail2ban; disables apt Recommends. |
 | **greasewood** | Installs the greasewood mesh CLI into `/opt/greasewood` (force-reinstalled from GitLab each apply → always current), symlinks `gw`, installs systemd units (daemon starts itself once a config appears). |
+| **claude_code** | *(dev profile only)* Installs Claude Code for pmuser via the native installer; re-run each apply so it stays current. Symlinks `claude` into `/usr/local/bin`. |
 | **auditd** | Hardened audit ruleset (account/login changes, sudo, module loads, mounts, key files); locked loginuid; optional immutable mode. |
 | **pwquality** | Password-quality policy (`minlen=12`, `minclass=3`, dictionary checks). |
 | **pam** | Strips `nullok` from pam_unix; wires `pam_faillock` lockout into the console/sudo path. |
