@@ -25,3 +25,4 @@ accounts_present:
 # is running are killed first so the removal can't be blocked or leave orphans.
 accounts_purge:
   - linuxuser
+  - user
