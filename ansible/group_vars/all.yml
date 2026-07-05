@@ -17,8 +17,9 @@ ssh_authorized_keys:
     - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICUwH1LPReemNHtkCd9uBkfm/ht1kmtqUPz+acu6yL0N pm-backup-key"
     - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIN4HDthJiYBwD50vAxP6+wBaoCB45W8Dtul22NrXdUHO bastion"
 ssh_allow_users: ["pmuser"]   # only this user may log in over SSH (AllowUsers)
-# ssh_allow_proxy_jump is NOT set here: it belongs to the bastion profile
-# (group_vars/bastion.yml, or BASTION=1 bash apply.sh locally).
+# ProxyJump forwarding is part of the default (= bastion) behaviour; only the
+# gw_node profile pins it off (DisableForwarding).
+ssh_allow_proxy_jump: true
 
 # --- accounts role: emergency console password for pmuser ---
 # sha512crypt hash of pmuser's Vultr-console password. SSH password auth is off,

@@ -8,10 +8,8 @@ each behind a tag so you can run any subset.
 ## Cheat sheet
 
 ```bash
-bash apply.sh                     # pull latest from GitLab + apply to THIS host (default profile)
-OPEN=1 bash apply.sh              # same, open profile (bastion + password SSH stays on)
-BASTION=1 bash apply.sh           # same, bastion profile (public SSH + ProxyJump)
-DEV=1 bash apply.sh               # same, dev profile (bastion + Claude Code)
+bash apply.sh                     # pull latest from GitLab + apply to THIS host (bastion, the default)
+DEV=1 bash apply.sh               # same, dev profile (open dev box: IPv4+pw SSH, Claude Code)
 GW_NODE=1 bash apply.sh           # same, gw_node profile (mesh-only SSH, locked down)
 IMAGE_BUILD=1 bash apply.sh       # image build (then snapshot in the Vultr panel)
 bash apply_gw.sh                  # greasewood role only — fast iteration
@@ -36,8 +34,8 @@ Vultr startup-script field (fill in a single-use enrollment token first).
 ## Fleet mode
 
 The fleet is a hand-kept list in `ansible/inventory/hosts.yml`: each host
-(IP or hostname) goes under exactly one profile group — `open`, `bastion`,
-`dev`, or `gw_node` — and the matching `group_vars/<profile>.yml` applies
+(IP or hostname) goes under exactly one profile group — `bastion`, `dev`, or
+`gw_node` — and the matching `group_vars/<profile>.yml` applies
 automatically.
 Connections are plain SSH as **pmuser**: the control machine needs pmuser's
 private key, and runs need `-K` (sudo prompts for pmuser's password — the
@@ -66,21 +64,21 @@ Profiles decide a host's SSH exposure. Each is a vars file in
 `apply.sh`, or **fleet-wide** by listing the host under that group in
 `ansible/inventory/hosts.yml`:
 
-| Profile | SSH reachable on | Forwarding | Apply to localhost | Apply via fleet |
-|---------|------------------|------------|--------------------|-----------------|
-| **default** | public internet | none | `bash apply.sh` | host in no profile group |
-| **open** | public internet (IPv4 **and** IPv6) **and** `gw-mesh` — password SSH allowed | ProxyJump only | `OPEN=1 bash apply.sh` | group `open`, `./fleet.sh apply --limit open` |
-| **bastion** | public internet **and** `gw-mesh` | ProxyJump only (`PermitOpen *:22`) | `BASTION=1 bash apply.sh` | group `bastion`, `./fleet.sh apply --limit bastion` |
-| **dev** | public internet **and** `gw-mesh` | ProxyJump only | `DEV=1 bash apply.sh` | group `dev`, `./fleet.sh apply --limit dev` |
-| **gw_node** | `gw-mesh` overlay only | none (`DisableForwarding yes`) | `GW_NODE=1 bash apply.sh` | group `gw_node`, `./fleet.sh apply --limit gw_node` |
+| Profile | SSH reachable on | Password SSH | Claude Code | Purges accounts | Apply to localhost | Apply via fleet |
+|---------|------------------|--------------|-------------|-----------------|--------------------|-----------------|
+| **bastion** *(default)* | public internet (IPv6) **and** `gw-mesh` | no (key-only) | no | yes | `bash apply.sh` | group `bastion` (ungrouped hosts behave the same) |
+| **dev** | public internet (IPv4 **and** IPv6) **and** `gw-mesh` | **yes** (emergency password) | **yes** | **no** | `DEV=1 bash apply.sh` | group `dev` |
+| **gw_node** | `gw-mesh` overlay only | no | no | yes | `GW_NODE=1 bash apply.sh` | group `gw_node` |
 
-open = bastion + SSH password login left ON (pmuser's emergency password;
-faillock and PerSourcePenalties still throttle guessing). dev = bastion +
-Claude Code (installed for pmuser and updated on every apply).
-The default is the lockout-safe baseline: a brand-new or unlisted node always
-comes up publicly reachable. Put a host in exactly **one** profile group, and
-move it into gw_node only **after** it is reachable over the mesh (the Vultr
-console is the fallback). Reach gw_nodes through the bastion:
+All profiles except gw_node serve ProxyJump (SSH-only local forwarding,
+`PermitOpen *:22`; agent forwarding off everywhere). **bastion** is the
+network-hardened default — a brand-new or unlisted node always comes up this
+way, publicly reachable and key-only, so you can't lock yourself out.
+**dev** is the very open development box (faillock and PerSourcePenalties
+still throttle password guessing). **gw_node** is fully locked down: no
+public SSH at all — move a host there only **after** it is reachable over
+the mesh (the Vultr console is the fallback). Reach gw_nodes through the
+bastion:
 
 ```sshconfig
 Host bastion
