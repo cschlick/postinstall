@@ -1,0 +1,5 @@
+---
+# The real playbook, unmodified — profile selection happens via the inventory
+# groups the platforms joined (see molecule.yml) + the group_vars symlink.
+- name: Converge
+  import_playbook: ../../site.yml

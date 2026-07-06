@@ -1,0 +1,13 @@
+---
+- name: Prepare
+  hosts: all
+  become: true
+  tasks:
+    # Seed the image-residue accounts on every container: bastion and gw_node
+    # must purge them, dev must leave them alone.
+    - name: Create linuxuser and user (purge candidates)
+      ansible.builtin.user:
+        name: "{{ item }}"
+        create_home: true
+        shell: /bin/bash
+      loop: [linuxuser, user]

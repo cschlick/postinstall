@@ -16,3 +16,8 @@ nftables_ssh_iifname: gw-pm
 # Also accept SSH over IPv4 (dev profile; pair with ssh_listen_ipv4 so sshd
 # actually listens on 0.0.0.0). Default: IPv6-only, like everything else.
 nftables_ssh_ipv4: false
+
+# When false, deploy + validate the ruleset but DON'T enable/start/reload the
+# service (test containers — a host-networked container would load the
+# drop-by-default rules onto the host's own network). Real hosts leave it true.
+nftables_apply: true

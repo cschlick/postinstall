@@ -1,0 +1,92 @@
+---
+# Profile-level end-to-end test: THREE systemd containers, one per profile.
+# Each container joins its profile's inventory group (bastion / dev / gw_node),
+# so the real group_vars/<profile>.yml files apply exactly as in fleet mode
+# (converge imports ../../site.yml, whose adjacent group_vars/ ansible loads).
+# verify asserts the profile-differentiating end state (firewall rules, sshd
+# config, account purges, Claude Code).
+#
+# Run from ansible/:   molecule test -s profiles
+# Host-global actions are staged, not run (the *_apply guards below) — in
+# particular nftables_apply, since a host-networked container shares the
+# host's netns. Per-host ssh_port (inventory host_vars below — INVENTORY
+# host_vars outrank the playbook-adjacent group_vars, scenario-local files
+# would not) avoids :22 collisions there; ansible_user likewise overrides
+# all.yml's pmuser, since molecule connects via docker exec as root.
+# greasewood is skipped: heavy and identical across profiles.
+role_name_check: 1
+driver:
+  name: docker
+platforms:
+  - name: profiles-bastion
+    groups: [bastion]
+    image: molecule-trixie-systemd
+    pre_build_image: true
+    network_mode: "${MOLECULE_NETWORK_MODE:-bridge}"
+    command: /lib/systemd/systemd
+    privileged: true
+    cgroupns_mode: host
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    tmpfs:
+      - /run
+      - /tmp
+  - name: profiles-dev
+    groups: [dev]
+    image: molecule-trixie-systemd
+    pre_build_image: true
+    network_mode: "${MOLECULE_NETWORK_MODE:-bridge}"
+    command: /lib/systemd/systemd
+    privileged: true
+    cgroupns_mode: host
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    tmpfs:
+      - /run
+      - /tmp
+  - name: profiles-gw-node
+    groups: [gw_node]
+    image: molecule-trixie-systemd
+    pre_build_image: true
+    network_mode: "${MOLECULE_NETWORK_MODE:-bridge}"
+    command: /lib/systemd/systemd
+    privileged: true
+    cgroupns_mode: host
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    tmpfs:
+      - /run
+      - /tmp
+provisioner:
+  name: ansible
+  env:
+    ANSIBLE_ROLES_PATH: "${MOLECULE_PROJECT_DIRECTORY}/roles"
+  inventory:
+    host_vars:
+      profiles-bastion:
+        ansible_user: root
+        ssh_port: 2201
+      profiles-dev:
+        ansible_user: root
+        ssh_port: 2202
+      profiles-gw-node:
+        ansible_user: root
+        ssh_port: 2203
+    group_vars:
+      all:
+        # Stage host-global actions instead of running them (containers).
+        nftables_apply: false
+        sysctl_apply: false
+        auditd_apply: false
+        resolved_apply: false
+        timesync_apply: false
+        coredump_apply: false
+        networkd_apply: false
+        module_blacklist_apply: false
+        system_upgrade_apply: false
+        unattended_upgrades_apply: false
+        cloudinit_apply: false
+        # Heavy and identical across profiles — skip in this scenario.
+        greasewood_enabled: false
+verifier:
+  name: ansible

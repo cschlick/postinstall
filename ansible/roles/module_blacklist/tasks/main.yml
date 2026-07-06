@@ -1,4 +1,13 @@
 ---
+# kmod ships this dir on real systems; minimal containers lack it.
+- name: Ensure /etc/modprobe.d exists
+  ansible.builtin.file:
+    path: /etc/modprobe.d
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
 - name: Install the headless module blacklist
   ansible.builtin.template:
     src: blacklist-desktop.conf.j2

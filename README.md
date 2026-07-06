@@ -211,7 +211,15 @@ sudo apt-get install -y docker.io && sudo usermod -aG docker "$USER"
 pip install molecule "molecule-plugins[docker]" ansible
 docker build -t molecule-trixie-systemd ansible/roles/ssh/molecule/default   # once
 cd ansible/roles/accounts && molecule test                                   # per role
+cd ansible && molecule test -s profiles     # FULL site.yml, one container per profile
 ```
+
+The `profiles` scenario is the end-to-end check: three systemd containers
+join the bastion / dev / gw_node inventory groups, converge the real
+`site.yml` (host-global actions staged via the `*_apply` guards), prove
+idempotence, and assert the profile-differentiating end state — firewall
+rules, sshd config, account purges, Claude Code. If the docker bridge has no
+egress (some sandboxes), prefix commands with `MOLECULE_NETWORK_MODE=host`.
 
 Static check: `cd ansible && ansible-playbook -i 'localhost,' -c local site.yml --syntax-check`
 

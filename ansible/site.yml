@@ -20,6 +20,7 @@
     - role: packages
       tags: [packages]
     - role: greasewood
+      when: greasewood_enabled | default(true)
       tags: [greasewood]
     # dev profile only (tag_dev.yml sets claude_code_enabled: true).
     - role: claude_code

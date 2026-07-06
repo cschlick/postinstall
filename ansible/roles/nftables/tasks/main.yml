@@ -20,3 +20,4 @@
     name: nftables
     enabled: true
     state: started
+  when: nftables_apply

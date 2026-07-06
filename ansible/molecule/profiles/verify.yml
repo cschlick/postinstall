@@ -1,0 +1,109 @@
+---
+# Assert the profile-differentiating end state. The firewall is asserted on
+# the RENDERED /etc/nftables.conf (nftables_apply is false in containers);
+# it was already syntax-validated by the role's `nft -c` on deploy.
+- name: Verify (all profiles)
+  hosts: all
+  become: true
+  tasks:
+    - name: Read passwd, shadow, nftables.conf, sshd_config, sudoers grant
+      ansible.builtin.slurp:
+        path: "{{ item }}"
+      loop:
+        - /etc/passwd
+        - /etc/shadow
+        - /etc/nftables.conf
+        - /etc/ssh/sshd_config
+        - /etc/sudoers.d/pmuser-nopasswd
+      register: verify_files
+
+    - name: Decode file contents
+      ansible.builtin.set_fact:
+        v_passwd: "{{ verify_files.results[0].content | b64decode }}"
+        v_shadow: "{{ verify_files.results[1].content | b64decode }}"
+        v_nft: "{{ verify_files.results[2].content | b64decode }}"
+        v_sshd: "{{ verify_files.results[3].content | b64decode }}"
+        v_sudoers: "{{ verify_files.results[4].content | b64decode }}"
+
+    - name: Assert invariants shared by every profile
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          - "'pmuser:' in v_passwd"
+          - "'root:!:' in v_shadow"
+          - 'v_sudoers == "pmuser ALL=(ALL) NOPASSWD: /usr/local/bin/gw\n"'
+          - "'iifname \"gw-pm\" tcp dport 22 ct state new accept' in v_nft"
+          - "'AllowUsers pmuser' in v_sshd"
+          - "'PermitRootLogin no' in v_sshd"
+
+- name: Verify bastion profile
+  hosts: bastion
+  become: true
+  tasks:
+    - name: Assert bastion end state
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          # Public SSH: IPv6 yes, IPv4 no.
+          - "'ip6 saddr ::/0 tcp dport 22 ct state new accept' in v_nft"
+          - "'ip saddr 0.0.0.0/0' not in v_nft"
+          # Key-only, ProxyJump served, IPv6-only listener.
+          - "'PasswordAuthentication no' in v_sshd"
+          - "'AllowTcpForwarding local' in v_sshd"
+          - "'PermitOpen *:' in v_sshd"
+          - "'AddressFamily inet6' in v_sshd"
+          # Image-residue accounts purged.
+          - "'linuxuser:' not in v_passwd"
+          - "'\nuser:' not in v_passwd"
+
+- name: Verify dev profile
+  hosts: dev
+  become: true
+  tasks:
+    - name: Assert dev end state
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          # Public SSH over BOTH families.
+          - "'ip6 saddr ::/0 tcp dport 22 ct state new accept' in v_nft"
+          - "'ip saddr 0.0.0.0/0 tcp dport 22 ct state new accept' in v_nft"
+          # Password SSH on, IPv4 listener, ProxyJump served.
+          - "'PasswordAuthentication yes' in v_sshd"
+          - "'AddressFamily any' in v_sshd"
+          - "'ListenAddress 0.0.0.0' in v_sshd"
+          - "'AllowTcpForwarding local' in v_sshd"
+          # NO purging on dev.
+          - "'linuxuser:' in v_passwd"
+          - "'\nuser:' in v_passwd"
+
+    - name: Stat the Claude Code install
+      ansible.builtin.stat:
+        path: /usr/local/bin/claude
+      register: verify_claude
+
+    - name: Assert Claude Code is installed and linked
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          - verify_claude.stat.islnk
+          - verify_claude.stat.lnk_target == '/home/pmuser/.local/bin/claude'
+
+- name: Verify gw_node profile
+  hosts: gw_node
+  become: true
+  tasks:
+    - name: Assert gw_node end state
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          # NO public SSH at all — the overlay rule (asserted for all) is the
+          # only way in.
+          - "'ip6 saddr ::/0 tcp dport 22' not in v_nft"
+          - "'ip saddr 0.0.0.0/0' not in v_nft"
+          # Fully locked down sshd.
+          - "'DisableForwarding yes' in v_sshd"
+          - "'AllowTcpForwarding no' in v_sshd"
+          - "'PasswordAuthentication no' in v_sshd"
+          # Image-residue accounts purged.
+          - "'linuxuser:' not in v_passwd"
+          - "'\nuser:' not in v_passwd"
