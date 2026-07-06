@@ -32,7 +32,7 @@
           - "'pmuser:' in v_passwd"
           - "'root:!:' in v_shadow"
           - 'v_sudoers == "pmuser ALL=(ALL) NOPASSWD: /usr/local/bin/gw\n"'
-          - "'iifname \"gw-pm\" tcp dport 22 ct state new accept' in v_nft"
+          - "'iifname \"gw-*\" tcp dport 22 ct state new accept' in v_nft"
           - "'AllowUsers pmuser' in v_sshd"
           - "'PermitRootLogin no' in v_sshd"
 
@@ -122,9 +122,9 @@
           - "'ip6 saddr ::/0 tcp dport 22' not in v_nft"
           - "'DisableForwarding yes' in v_sshd"
           # NATS ports opened on the overlay interface ONLY.
-          - "'iifname \"gw-pm\" tcp dport 4222 ct state new accept' in v_nft"
-          - "'iifname \"gw-pm\" tcp dport 8222 ct state new accept' in v_nft"
-          - "'dport 4222 ct state new accept' not in (v_nft | regex_replace('iifname \"gw-pm\" tcp dport 4222 ct state new accept', ''))"
+          - "'iifname \"gw-*\" tcp dport 4222 ct state new accept' in v_nft"
+          - "'iifname \"gw-*\" tcp dport 8222 ct state new accept' in v_nft"
+          - "'dport 4222 ct state new accept' not in (v_nft | replace('iifname \"gw-*\" tcp dport 4222 ct state new accept', ''))"
 
     - name: Read nats-server.conf
       ansible.builtin.slurp:

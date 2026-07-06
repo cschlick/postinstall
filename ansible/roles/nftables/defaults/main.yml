@@ -7,7 +7,7 @@ nftables_ssh_port: 22
 nftables_extra_tcp_ports: []
 
 # Inbound TCP ports reachable ONLY over the mesh overlay interface
-# (nftables_ssh_iifname) — for services bound to the overlay address, e.g. the
+# (nftables_mesh_iifname) — for services bound to the overlay address, e.g. the
 # nats profile sets [4222, 8222]. Binding to the overlay address alone does
 # NOT open the port; every mesh service needs its rule here.
 nftables_mesh_tcp_ports: []
@@ -15,9 +15,15 @@ nftables_mesh_tcp_ports: []
 # SSH exposure. DEFAULT = public: SSH reachable from the internet, so a node can
 # never be locked out before its mesh is up. Lock a node down via the gw_node
 # profile (group_vars/gw_node.yml sets nftables_ssh_public: false), which
-# restricts SSH to the VPN overlay interface (nftables_ssh_iifname) only.
+# restricts SSH to the VPN overlay interface(s) (nftables_mesh_iifname) only.
 nftables_ssh_public: true
-nftables_ssh_iifname: gw-pm
+
+# Interface match for overlay-scoped rules (SSH-over-mesh, control plane,
+# nftables_mesh_tcp_ports). Greasewood creates every mesh interface as
+# gw-<name>, so a trailing-* glob matches any mesh on the box without
+# per-mesh rules. NOTE: this also matches the transient gw-door enrollment
+# interface — services stay protected by keys/mTLS regardless.
+nftables_mesh_iifname: "gw-*"
 
 # Also accept SSH over IPv4 (dev profile; pair with ssh_listen_ipv4 so sshd
 # actually listens on 0.0.0.0). Default: IPv6-only, like everything else.

@@ -41,7 +41,7 @@ table inet filter {
 
         # SSH always reachable over the VPN overlay — the gw_node profile relies
         # on this as its only path in.
-        iifname "{{ nftables_ssh_iifname }}" tcp dport {{ nftables_ssh_port }} ct state new accept
+        iifname "{{ nftables_mesh_iifname }}" tcp dport {{ nftables_ssh_port }} ct state new accept
 {% if nftables_ssh_public %}
         # Default profile (nftables_ssh_public): also reachable from the public
         # internet — IPv6 only, by design. The gw_node profile sets this false to
@@ -61,7 +61,7 @@ table inet filter {
 {% endfor %}
 {% for port in nftables_mesh_tcp_ports %}
         # Mesh-only service port: reachable ONLY over the overlay.
-        iifname "{{ nftables_ssh_iifname }}" tcp dport {{ port }} ct state new accept
+        iifname "{{ nftables_mesh_iifname }}" tcp dport {{ port }} ct state new accept
 {% endfor %}
 
         # greasewood + wireguard. The two WireGuard UDP ports face the underlay
@@ -69,11 +69,11 @@ table inet filter {
         # control/enroll TCP planes bind only to the overlay + loopback, so each
         # is scoped to its own tunnel interface — nothing reaches them off the
         # underlay even if a bind ever regressed:
-        #   gw-pm    tcp 51902  control plane (when this node is the hub)
+        #   gw-*     tcp 51902  control plane (when this node is the hub)
         #   gw-door  tcp 51903  enrollment exchange (when hub, during a window)
         # Same on every node so any node can become the hub with no rule change.
         ip6 saddr ::/0 udp dport { 51900, 51901 } ct state new accept
-        iifname "gw-pm" tcp dport 51902 ct state new accept
+        iifname "{{ nftables_mesh_iifname }}" tcp dport 51902 ct state new accept
         iifname "gw-door" tcp dport 51903 ct state new accept
 
         # Log anything that reaches the end of the chain before the default

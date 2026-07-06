@@ -1,7 +1,7 @@
 # {{ ansible_managed }}
 server_name: {{ ansible_hostname }}
 
-# Mesh overlay only — not reachable off the {{ nftables_ssh_iifname | default('gw-pm') }} WireGuard interface.
+# Mesh overlay only — not reachable off the mesh WireGuard interface.
 host: "{{ nats_listen_addr }}"
 port: {{ nats_port }}
 
