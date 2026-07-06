@@ -1,21 +1,8 @@
 ---
+# Generate throwaway TLS material where `gw cert-request` would place the
+# mesh CA's (no mesh in the container; converge sets nats_cert_manage false).
 - name: Prepare
   hosts: all
-  become: true
-  tasks:
-    # Seed the image-residue accounts on every container: bastion and gw_node
-    # must purge them, dev must leave them alone.
-    - name: Create linuxuser and user (purge candidates)
-      ansible.builtin.user:
-        name: "{{ item }}"
-        create_home: true
-        shell: /bin/bash
-      loop: [linuxuser, user]
-
-# nats hosts: generate throwaway TLS material where `gw cert-request` would
-# place the mesh CA's (no mesh in containers; nats_cert_manage is false).
-- name: Prepare nats TLS material
-  hosts: nats
   become: true
   tasks:
     - name: Create the TLS directory

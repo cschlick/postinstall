@@ -1,0 +1,21 @@
+---
+# NATS listens ONLY on this address — the node's mesh overlay address, taken
+# from the gw-pm interface facts by default (dash becomes underscore in fact
+# names). The matching firewall opening comes from nftables_mesh_tcp_ports in
+# group_vars/nats.yml, NOT from binding alone. Override for tests.
+nats_listen_addr: "{{ ansible_facts.gw_pm.ipv6[0].address }}"
+
+nats_port: 4222
+nats_monitor_port: 8222
+nats_store_dir: /var/lib/nats-server/jetstream
+nats_tls_dir: /etc/nats/tls
+
+# Obtain + auto-renew the server cert from the mesh CA via
+# `gw cert-request --profile nats` (registers renewal + reload with the gw
+# daemon). Tests set this false and pre-place their own certs at nats_tls_dir.
+nats_cert_manage: true
+
+# JetStream limits: unset => nats-server auto-sizes from host resources.
+# Set e.g. "1G" to pin instead.
+nats_max_mem_store: ""
+nats_max_file_store: ""

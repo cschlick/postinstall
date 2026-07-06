@@ -1,0 +1,13 @@
+---
+- name: Converge
+  hosts: all
+  become: true
+  vars:
+    # No mesh in the container: bind loopback, use prepare.yml's certs.
+    nats_listen_addr: "::1"
+    nats_cert_manage: false
+    # Sandbox host-net runs share loopback with the host — avoid its :4222.
+    nats_port: 14222
+    nats_monitor_port: 18222
+  roles:
+    - role: nats

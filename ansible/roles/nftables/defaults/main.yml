@@ -2,9 +2,15 @@
 # Inbound TCP port for SSH (always accepted, IPv4 and IPv6, new connections).
 nftables_ssh_port: 22
 
-# Extra inbound TCP ports to accept (IPv4 and IPv6). Empty on the headless
-# base; the old GUI profile is just: nftables_extra_tcp_ports: [3389]  # RDP
+# Extra inbound TCP ports to accept (IPv4 and IPv6, PUBLIC). Empty on the
+# headless base; the old GUI profile is just: nftables_extra_tcp_ports: [3389]
 nftables_extra_tcp_ports: []
+
+# Inbound TCP ports reachable ONLY over the mesh overlay interface
+# (nftables_ssh_iifname) — for services bound to the overlay address, e.g. the
+# nats profile sets [4222, 8222]. Binding to the overlay address alone does
+# NOT open the port; every mesh service needs its rule here.
+nftables_mesh_tcp_ports: []
 
 # SSH exposure. DEFAULT = public: SSH reachable from the internet, so a node can
 # never be locked out before its mesh is up. Lock a node down via the gw_node

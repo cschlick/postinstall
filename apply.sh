@@ -12,6 +12,8 @@
 #   GW_NODE=1 bash apply.sh  -> gw_node profile: SSH only on the gw-pm overlay,
 #                               no forwarding. The Vultr console is your fallback
 #                               if mesh SSH isn't up yet.
+#   NATS=1 bash apply.sh     -> nats service profile (STACKS on a base profile,
+#                               e.g. NATS=1 GW_NODE=1): mesh-only JetStream, mTLS
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -21,6 +23,7 @@ EXTRA=()
 [ "${IMAGE_BUILD:-0}" = 1 ] && EXTRA+=(-e image_build=true)
 [ "${DEV:-0}" = 1 ] && EXTRA+=(-e @"$ROOT/ansible/group_vars/dev.yml")
 [ "${GW_NODE:-0}" = 1 ] && EXTRA+=(-e @"$ROOT/ansible/group_vars/gw_node.yml")
+[ "${NATS:-0}" = 1 ] && EXTRA+=(-e @"$ROOT/ansible/group_vars/nats.yml")
 
 # Ensure galaxy collections are present (idempotent; fast when already installed).
 ansible-galaxy collection install -r "$ROOT/ansible/requirements.yml"

@@ -55,6 +55,8 @@
           # Image-residue accounts purged.
           - "'linuxuser:' not in v_passwd"
           - "'\nuser:' not in v_passwd"
+          # No mesh service ports on a plain gw_node.
+          - "'dport 4222' not in v_nft"
 
 - name: Verify dev profile
   hosts: dev
@@ -89,7 +91,7 @@
           - verify_claude.stat.lnk_target == '/home/pmuser/.local/bin/claude'
 
 - name: Verify gw_node profile
-  hosts: gw_node
+  hosts: gw_node:!nats
   become: true
   tasks:
     - name: Assert gw_node end state
@@ -107,3 +109,51 @@
           # Image-residue accounts purged.
           - "'linuxuser:' not in v_passwd"
           - "'\nuser:' not in v_passwd"
+
+- name: Verify nats profile (stacked on gw_node)
+  hosts: nats
+  become: true
+  tasks:
+    - name: Assert stacked end state (gw_node lockdown + nats mesh ports)
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          # Base gw_node behaviour intact.
+          - "'ip6 saddr ::/0 tcp dport 22' not in v_nft"
+          - "'DisableForwarding yes' in v_sshd"
+          # NATS ports opened on the overlay interface ONLY.
+          - "'iifname \"gw-pm\" tcp dport 4222 ct state new accept' in v_nft"
+          - "'iifname \"gw-pm\" tcp dport 8222 ct state new accept' in v_nft"
+          - "'dport 4222 ct state new accept' not in (v_nft | regex_replace('iifname \"gw-pm\" tcp dport 4222 ct state new accept', ''))"
+
+    - name: Read nats-server.conf
+      ansible.builtin.slurp:
+        path: /etc/nats-server.conf
+      register: verify_nats_conf
+
+    - name: Assert NATS config (overlay bind, JetStream, mutual TLS)
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          - "'host: \"::1\"' in c"
+          - "'store_dir: \"/var/lib/nats-server/jetstream\"' in c"
+          - "'verify:    true' in c"
+      vars:
+        c: "{{ verify_nats_conf.content | b64decode }}"
+
+    - name: Read the NATS INFO banner (plaintext preamble before TLS)
+      ansible.builtin.shell: |
+        python3 -c "
+        import socket
+        s = socket.create_connection(('::1', 14222), timeout=5)
+        print(s.recv(4096).decode())"
+      register: verify_nats_banner
+      changed_when: false
+
+    - name: Assert NATS advertises mTLS and JetStream
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          - "'\"tls_required\":true' in verify_nats_banner.stdout"
+          - "'\"tls_verify\":true' in verify_nats_banner.stdout"
+          - "'\"jetstream\":true' in verify_nats_banner.stdout"

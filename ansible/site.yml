@@ -22,10 +22,15 @@
     - role: greasewood
       when: greasewood_enabled | default(true)
       tags: [greasewood]
-    # dev profile only (tag_dev.yml sets claude_code_enabled: true).
+    # dev profile only (group_vars/dev.yml sets claude_code_enabled: true).
     - role: claude_code
       when: claude_code_enabled | default(false)
       tags: [claude_code, dev]
+    # nats profile only (group_vars/nats.yml sets nats_enabled: true; stacks
+    # on a base profile). Needs greasewood (above) for the mesh CA cert.
+    - role: nats
+      when: nats_enabled | default(false)
+      tags: [nats]
     - role: auditd
       tags: [auditd]
     - role: pwquality

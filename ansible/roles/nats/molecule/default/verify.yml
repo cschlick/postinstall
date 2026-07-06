@@ -1,0 +1,37 @@
+---
+- name: Verify
+  hosts: all
+  become: true
+  tasks:
+    - name: Check nats-server is active
+      ansible.builtin.command: systemctl is-active nats-server
+      changed_when: false
+
+    - name: Read the NATS INFO banner (plaintext preamble before TLS)
+      ansible.builtin.shell: |
+        python3 -c "
+        import socket
+        s = socket.create_connection(('::1', 14222), timeout=5)
+        print(s.recv(4096).decode())"
+      register: verify_nats_banner
+      changed_when: false
+
+    - name: Assert NATS advertises mTLS and JetStream
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          - "'\"tls_required\":true' in verify_nats_banner.stdout"
+          - "'\"tls_verify\":true' in verify_nats_banner.stdout"
+          - "'\"jetstream\":true' in verify_nats_banner.stdout"
+
+    - name: Check the JetStream store directory ownership
+      ansible.builtin.stat:
+        path: /var/lib/nats-server/jetstream
+      register: verify_store
+
+    - name: Assert store directory belongs to nats
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          - verify_store.stat.isdir
+          - verify_store.stat.pw_name == 'nats'

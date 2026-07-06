@@ -1,0 +1,27 @@
+# {{ ansible_managed }}
+server_name: {{ ansible_hostname }}
+
+# Mesh overlay only — not reachable off the {{ nftables_ssh_iifname | default('gw-pm') }} WireGuard interface.
+host: "{{ nats_listen_addr }}"
+port: {{ nats_port }}
+
+# HTTP monitoring endpoint (varz/jsz/connz), same overlay-only exposure.
+http: "[{{ nats_listen_addr }}]:{{ nats_monitor_port }}"
+
+jetstream {
+  store_dir: "{{ nats_store_dir }}"
+{% if nats_max_mem_store %}
+  max_mem_store: {{ nats_max_mem_store }}
+{% endif %}
+{% if nats_max_file_store %}
+  max_file_store: {{ nats_max_file_store }}
+{% endif %}
+}
+
+# Mutual TLS: only clients presenting a cert signed by the mesh CA connect.
+tls {
+  cert_file: "{{ nats_tls_dir }}/server.crt"
+  key_file:  "{{ nats_tls_dir }}/server.key"
+  ca_file:   "{{ nats_tls_dir }}/ca.crt"
+  verify:    true
+}

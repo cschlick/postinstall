@@ -1,0 +1,45 @@
+---
+# NATS JetStream bound to the mesh overlay only, mutual TLS via the mesh CA.
+# Port of /root/nats-jetstream-setup.md (verified live on node04).
+- name: Install nats-server
+  ansible.builtin.apt:
+    name: nats-server
+    state: present
+    update_cache: true
+
+- name: Create the JetStream storage directory
+  ansible.builtin.file:
+    path: "{{ nats_store_dir }}"
+    state: directory
+    owner: nats
+    group: nats
+    mode: "0750"
+
+# One-time issuance; the gw daemon then auto-renews at ~half-TTL and runs
+# `systemctl reload nats-server` itself. Idempotent, but `creates` skips the
+# call entirely once the cert exists (renewal is the daemon's job, not ours).
+# Needs the anchor's control plane (51902) reachable over the mesh.
+- name: Request the server certificate from the mesh CA
+  ansible.builtin.command:
+    cmd: gw cert-request --profile nats
+    creates: "{{ nats_tls_dir }}/server.crt"
+  when: nats_cert_manage
+
+# The package postinst starts nats-server with its stock config
+# (127.0.0.1, no TLS, no JetStream) — hence the restart handler below rather
+# than a bare enable+start, which would be a no-op on the running unit.
+- name: Deploy nats-server.conf (validated)
+  ansible.builtin.template:
+    src: nats-server.conf.j2
+    dest: /etc/nats-server.conf
+    owner: root
+    group: nats
+    mode: "0640"
+    validate: nats-server -c %s -t
+  notify: Restart nats-server
+
+- name: Enable and start nats-server
+  ansible.builtin.systemd_service:
+    name: nats-server
+    enabled: true
+    state: started

@@ -1,0 +1,14 @@
+---
+# The nats service profile — STACKS on a base profile rather than replacing
+# it: put the host in BOTH groups (usually gw_node + nats) in
+# inventory/hosts.yml, or locally NATS=1 GW_NODE=1 bash apply.sh. It only adds
+# NATS concerns; SSH exposure still comes from the base profile.
+
+# Run the nats role (roles/nats): JetStream, bound to the mesh overlay
+# address, mutual TLS via the mesh CA (gw cert-request --profile nats).
+nats_enabled: true
+
+# Open the NATS ports on the overlay interface ONLY (mesh-only — deliberately
+# not nftables_extra_tcp_ports, which is public). Binding to the overlay
+# address does not open the port by itself.
+nftables_mesh_tcp_ports: [4222, 8222]

@@ -56,8 +56,12 @@ table inet filter {
 {% endif %}
 
 {% for port in nftables_extra_tcp_ports %}
-        # Extra allowed inbound TCP (IPv4 and IPv6).
+        # Extra allowed inbound TCP (IPv4 and IPv6, public).
         tcp dport {{ port }} ct state new accept
+{% endfor %}
+{% for port in nftables_mesh_tcp_ports %}
+        # Mesh-only service port: reachable ONLY over the overlay.
+        iifname "{{ nftables_ssh_iifname }}" tcp dport {{ port }} ct state new accept
 {% endfor %}
 
         # greasewood + wireguard. The two WireGuard UDP ports face the underlay
