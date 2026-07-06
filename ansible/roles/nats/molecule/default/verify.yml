@@ -7,22 +7,19 @@
       ansible.builtin.command: systemctl is-active nats-server
       changed_when: false
 
-    - name: Read the NATS INFO banner (plaintext preamble before TLS)
-      ansible.builtin.shell: |
-        python3 -c "
-        import socket
-        s = socket.create_connection(('::1', 14222), timeout=5)
-        print(s.recv(4096).decode())"
-      register: verify_nats_banner
-      changed_when: false
+    - name: Install the mTLS checker
+      ansible.builtin.copy:
+        src: nats_mtls_check.py
+        dest: /usr/local/bin/nats_mtls_check.py
+        mode: "0755"
 
-    - name: Assert NATS advertises mTLS and JetStream
-      ansible.builtin.assert:
-        quiet: true
-        that:
-          - "'\"tls_required\":true' in verify_nats_banner.stdout"
-          - "'\"tls_verify\":true' in verify_nats_banner.stdout"
-          - "'\"jetstream\":true' in verify_nats_banner.stdout"
+    # Banner advertises mTLS+JetStream; certless client rejected; CA-signed
+    # client completes CONNECT/PING -> PONG.
+    - name: Run the mTLS checks
+      ansible.builtin.command: >-
+        python3 /usr/local/bin/nats_mtls_check.py ::1 14222
+        /etc/nats/tls/ca.crt /etc/nats/tls/client.crt /etc/nats/tls/client.key
+      changed_when: false
 
     - name: Check the JetStream store directory ownership
       ansible.builtin.stat:

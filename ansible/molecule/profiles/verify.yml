@@ -135,29 +135,46 @@
         path: /etc/nats-server.conf
       register: verify_nats_conf
 
-    - name: Assert NATS config (overlay bind, JetStream, mutual TLS)
+    - name: Assert NATS config (non-loopback bind, JetStream, mutual TLS)
       ansible.builtin.assert:
         quiet: true
         that:
-          - "'host: \"::1\"' in c"
+          - "('host: \"' ~ nats_listen_addr ~ '\"') in c"
           - "'store_dir: \"/var/lib/nats-server/jetstream\"' in c"
           - "'verify:    true' in c"
       vars:
         c: "{{ verify_nats_conf.content | b64decode }}"
 
-    - name: Read the NATS INFO banner (plaintext preamble before TLS)
-      ansible.builtin.shell: |
-        python3 -c "
-        import socket
-        s = socket.create_connection(('::1', 14222), timeout=5)
-        print(s.recv(4096).decode())"
-      register: verify_nats_banner
-      changed_when: false
+    # --- EXTERNAL mTLS check: run from a DIFFERENT container. Under bridge
+    # networking (CI) this crosses network namespaces — a genuinely external
+    # client. The checker proves: banner advertises mTLS+JetStream, a
+    # certless client is rejected, a CA-signed client gets CONNECT/PING->PONG.
+    - name: Read the client credentials off the nats host
+      ansible.builtin.slurp:
+        path: "/etc/nats/tls/{{ item }}"
+      loop: [ca.crt, client.crt, client.key]
+      register: verify_nats_creds
 
-    - name: Assert NATS advertises mTLS and JetStream
-      ansible.builtin.assert:
-        quiet: true
-        that:
-          - "'\"tls_required\":true' in verify_nats_banner.stdout"
-          - "'\"tls_verify\":true' in verify_nats_banner.stdout"
-          - "'\"jetstream\":true' in verify_nats_banner.stdout"
+    - name: Place the client credentials on the external tester
+      ansible.builtin.copy:
+        content: "{{ item.content | b64decode }}"
+        dest: "/tmp/nats-check-{{ item.item }}"
+        mode: "0600"
+      loop: "{{ verify_nats_creds.results }}"
+      loop_control:
+        label: "{{ item.item }}"
+      delegate_to: profiles-gw-node
+
+    - name: Install the mTLS checker on the external tester
+      ansible.builtin.copy:
+        src: ../../roles/nats/molecule/default/files/nats_mtls_check.py
+        dest: /tmp/nats_mtls_check.py
+        mode: "0755"
+      delegate_to: profiles-gw-node
+
+    - name: Run the external mTLS checks against this nats host
+      ansible.builtin.command: >-
+        python3 /tmp/nats_mtls_check.py {{ nats_listen_addr }} {{ nats_port }}
+        /tmp/nats-check-ca.crt /tmp/nats-check-client.crt /tmp/nats-check-client.key
+      changed_when: false
+      delegate_to: profiles-gw-node

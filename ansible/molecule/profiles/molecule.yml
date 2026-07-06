@@ -105,9 +105,11 @@ provisioner:
         cloudinit_apply: false
         # Heavy and identical across profiles — skip in this scenario.
         greasewood_enabled: false
-        # No mesh in containers: NATS listens on loopback and prepare.yml
+        # No mesh in containers: NATS binds the container's own routable
+        # address (so the cross-container mTLS check in verify.yml is a real
+        # external connection under bridge networking) and prepare.yml
         # generates the TLS material instead of `gw cert-request`.
-        nats_listen_addr: "::1"
+        nats_listen_addr: "{{ ansible_facts.default_ipv4.address }}"
         nats_cert_manage: false
         nats_port: 14222
         nats_monitor_port: 18222

@@ -15,12 +15,22 @@
       ansible.builtin.shell: |
         set -e
         cd /etc/nats/tls
+        # OpenSSL 3 / Python 3.13 validate strictly: the CA needs CA:true +
+        # keyCertSign, the leaves need serverAuth/clientAuth.
         openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:P-256 \
-          -keyout ca.key -out ca.crt -days 30 -nodes -subj "/CN=molecule-test-ca"
+          -keyout ca.key -out ca.crt -days 30 -nodes -subj "/CN=molecule-test-ca" \
+          -addext "basicConstraints=critical,CA:true" \
+          -addext "keyUsage=critical,keyCertSign"
+        printf 'basicConstraints=CA:false\nkeyUsage=digitalSignature\nextendedKeyUsage=serverAuth\n' > server.ext
         openssl req -newkey ec -pkeyopt ec_paramgen_curve:P-256 \
           -keyout server.key -out server.csr -nodes -subj "/CN=localhost"
         openssl x509 -req -in server.csr -CA ca.crt -CAkey ca.key \
-          -CAcreateserial -out server.crt -days 30
-        chmod 644 server.key server.crt ca.crt
+          -CAcreateserial -out server.crt -days 30 -extfile server.ext
+        printf 'basicConstraints=CA:false\nkeyUsage=digitalSignature\nextendedKeyUsage=clientAuth\n' > client.ext
+        openssl req -newkey ec -pkeyopt ec_paramgen_curve:P-256 \
+          -keyout client.key -out client.csr -nodes -subj "/CN=molecule-client"
+        openssl x509 -req -in client.csr -CA ca.crt -CAkey ca.key \
+          -CAcreateserial -out client.crt -days 30 -extfile client.ext
+        chmod 644 server.key server.crt ca.crt client.key client.crt
       args:
         creates: /etc/nats/tls/server.crt

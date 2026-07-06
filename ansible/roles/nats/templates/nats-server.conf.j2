@@ -6,7 +6,11 @@ host: "{{ nats_listen_addr }}"
 port: {{ nats_port }}
 
 # HTTP monitoring endpoint (varz/jsz/connz), same overlay-only exposure.
+{% if ':' in nats_listen_addr %}
 http: "[{{ nats_listen_addr }}]:{{ nats_monitor_port }}"
+{% else %}
+http: "{{ nats_listen_addr }}:{{ nats_monitor_port }}"
+{% endif %}
 
 jetstream {
   store_dir: "{{ nats_store_dir }}"
