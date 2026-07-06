@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # fleet.sh — run the hardening playbook (and ad-hoc checks) across the fleet
-# over plain SSH, using the static inventory (ansible/inventory/hosts.yml).
+# over plain SSH. The inventory does NOT live in this repo: the deploy repo
+# (postmodern-you/postmodern-deploy) is the inventory of record and renders
+# an ansible hosts file. Point at it:
+#   FLEET_INVENTORY=~/software/postmodern-deploy/inventory/ansible-hosts.yml ./fleet.sh ...
 #
 # Hosts are keyed to profiles by inventory GROUP (bastion / dev / gw_node);
 # the matching group_vars/<profile>.yml applies automatically. The control
@@ -37,7 +40,16 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SELF="$ROOT/$(basename "${BASH_SOURCE[0]}")"   # absolute path (we cd away below)
 cd "$ROOT/ansible"
 
-INV="inventory/hosts.yml"
+# Inventory comes from the deploy repo (see header) — required for every
+# command except `local` and `help`.
+INV="${FLEET_INVENTORY:-}"
+require_inventory() {
+  [ -n "$INV" ] && [ -f "$INV" ] && return 0
+  echo "fleet.sh: set FLEET_INVENTORY to the rendered inventory, e.g." >&2
+  echo "  FLEET_INVENTORY=.../postmodern-deploy/inventory/ansible-hosts.yml $0 $cmd" >&2
+  echo "  (generate it with: pmdeploy inventory)" >&2
+  exit 2
+}
 
 # Print the header comment block (everything between the shebang and the code).
 usage() { awk 'NR==1{next} /^#/{sub(/^# ?/,"");print;next} {exit}' "$SELF"; }
@@ -70,10 +82,10 @@ print("\n".join(sorted(allh - grouped)))
 case "$cmd" in
   help|-h|--help) usage; exit 0 ;;
   local)       exec ansible-playbook -i 'localhost,' -c local -l localhost site.yml "$@" ;;
-  list)        exec ansible-inventory -i "$INV" --graph "$@" ;;
-  ping)        exec ansible          -i "$INV" all -m ansible.builtin.ping "$@" ;;
-  check)       preflight_groups; exec ansible-playbook -i "$INV" site.yml --check --diff "$@" ;;
-  apply)       preflight_groups; exec ansible-playbook -i "$INV" site.yml "$@" ;;
-  rotate-keys) preflight_groups; exec ansible-playbook -i "$INV" site.yml --tags ssh "$@" ;;
+  list)        require_inventory; exec ansible-inventory -i "$INV" --graph "$@" ;;
+  ping)        require_inventory; exec ansible          -i "$INV" all -m ansible.builtin.ping "$@" ;;
+  check)       require_inventory; preflight_groups; exec ansible-playbook -i "$INV" site.yml --check --diff "$@" ;;
+  apply)       require_inventory; preflight_groups; exec ansible-playbook -i "$INV" site.yml "$@" ;;
+  rotate-keys) require_inventory; preflight_groups; exec ansible-playbook -i "$INV" site.yml --tags ssh "$@" ;;
   *) echo "fleet.sh: unknown command '$cmd'" >&2; echo >&2; usage; exit 2 ;;
 esac
