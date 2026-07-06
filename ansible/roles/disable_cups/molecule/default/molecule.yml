@@ -10,6 +10,7 @@ platforms:
   - name: disable-cups-trixie
     image: molecule-trixie-systemd
     pre_build_image: true
+    network_mode: "${MOLECULE_NETWORK_MODE:-bridge}"
     command: /lib/systemd/systemd
     privileged: true
     cgroupns_mode: host

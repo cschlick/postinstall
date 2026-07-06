@@ -8,6 +8,7 @@ platforms:
   - name: ssh-trixie
     image: molecule-trixie-systemd   # pre-built from ./Dockerfile (see below)
     pre_build_image: true            # use as-is; skip molecule's broken build task
+    network_mode: "${MOLECULE_NETWORK_MODE:-bridge}"
     command: /lib/systemd/systemd
     privileged: true
     cgroupns_mode: host

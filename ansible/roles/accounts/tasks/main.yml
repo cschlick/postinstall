@@ -22,6 +22,15 @@
     label: "{{ item.name }}"
 
 # ── 2. Generate SSH keypairs ────────────────────────────────────────────────
+# ssh-keygen comes from openssh-client — present on cloud images but not
+# guaranteed (found missing in the molecule container).
+- name: Ensure openssh-client is present (provides ssh-keygen)
+  ansible.builtin.apt:
+    name: openssh-client
+    state: present
+    update_cache: true
+  when: accounts_present | selectattr('generate_ssh_key', 'defined') | selectattr('generate_ssh_key') | list | length > 0
+
 - name: Ensure .ssh directory exists
   ansible.builtin.file:
     path: "/home/{{ item.name }}/.ssh"
