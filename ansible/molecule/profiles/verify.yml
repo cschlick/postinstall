@@ -218,7 +218,7 @@
     - name: Read the client credentials off the postgres host
       ansible.builtin.slurp:
         path: "/etc/postgres/tls/{{ item }}"
-      loop: [ca.crt, client.crt, client.key]
+      loop: [root.crt, client.crt, client.key]
       register: verify_pg_creds
 
     - name: Place the client credentials on the external tester
@@ -248,6 +248,6 @@
     - name: Run the external mTLS checks against this postgres host
       ansible.builtin.command: >-
         bash /tmp/pg_mtls_check.sh {{ postgres_listen_addr }} {{ postgres_port }}
-        /tmp/pg-check-ca.crt /tmp/pg-check-client.crt /tmp/pg-check-client.key
+        /tmp/pg-check-root.crt /tmp/pg-check-client.crt /tmp/pg-check-client.key
       changed_when: false
       delegate_to: profiles-gw-node

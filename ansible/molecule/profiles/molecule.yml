@@ -132,5 +132,7 @@ provisioner:
         postgres_listen_addr: "{{ ansible_facts.default_ipv4.address }}"
         postgres_cert_manage: false
         postgres_port: 15432
+        # PGDATA (the production default) doesn't exist at prepare time.
+        postgres_tls_dir: /etc/postgres/tls
 verifier:
   name: ansible

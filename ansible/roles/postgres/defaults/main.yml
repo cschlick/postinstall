@@ -11,7 +11,11 @@ postgres_port: 5432
 # Debian 13 (trixie) ships PostgreSQL 17; config lives under
 # /etc/postgresql/<version>/main.
 postgres_version: "17"
-postgres_tls_dir: /etc/postgres/tls
+# Where `gw cert-request --profile postgres` places server.key/server.crt/
+# root.crt — greasewood's shipped profile uses the Debian/PG cluster data dir
+# (the PostgreSQL-conventional location). Must match the greasewood profile;
+# tests override it (PGDATA doesn't exist before the package is installed).
+postgres_tls_dir: "/var/lib/postgresql/{{ postgres_version }}/main"
 
 # Obtain + auto-renew the server cert from the mesh CA via
 # `gw cert-request --profile postgres` (registers renewal + a reload hook —

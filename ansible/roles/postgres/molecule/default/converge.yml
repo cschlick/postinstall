@@ -8,5 +8,7 @@
     postgres_listen_addr: "::1"
     postgres_port: 15432
     postgres_cert_manage: false
+    # PGDATA (the production default) doesn't exist at prepare time.
+    postgres_tls_dir: /etc/postgres/tls
   roles:
     - role: postgres

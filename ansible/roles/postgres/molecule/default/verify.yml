@@ -25,5 +25,5 @@
     - name: Run the mTLS checks
       ansible.builtin.command: >-
         /usr/local/bin/pg_mtls_check.sh ::1 15432
-        /etc/postgres/tls/ca.crt /etc/postgres/tls/client.crt /root/pg-client.key
+        /etc/postgres/tls/root.crt /etc/postgres/tls/client.crt /root/pg-client.key
       changed_when: false
