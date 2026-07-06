@@ -66,9 +66,9 @@ Profiles decide a host's SSH exposure. Each is a vars file in
 
 | Profile | SSH reachable on | Password SSH | Claude Code | Purges accounts | Apply to localhost | Apply via fleet |
 |---------|------------------|--------------|-------------|-----------------|--------------------|-----------------|
-| **bastion** *(default)* | public internet (IPv6) **and** `gw-mesh` | no (key-only) | no | yes | `bash apply.sh` | group `bastion` (ungrouped hosts behave the same) |
-| **dev** | public internet (IPv4 **and** IPv6) **and** `gw-mesh` | **yes** (emergency password) | **yes** | **no** | `DEV=1 bash apply.sh` | group `dev` |
-| **gw_node** | `gw-mesh` overlay only | no | no | yes | `GW_NODE=1 bash apply.sh` | group `gw_node` |
+| **bastion** *(default)* | public internet (IPv6) **and** `gw-pm` | no (key-only) | no | yes | `bash apply.sh` | group `bastion` (ungrouped hosts behave the same) |
+| **dev** | public internet (IPv4 **and** IPv6) **and** `gw-pm` | **yes** (emergency password) | **yes** | **no** | `DEV=1 bash apply.sh` | group `dev` |
+| **gw_node** | `gw-pm` overlay only | no | no | yes | `GW_NODE=1 bash apply.sh` | group `gw_node` |
 
 All profiles except gw_node serve ProxyJump (SSH-only local forwarding,
 `PermitOpen *:22`; agent forwarding off everywhere). **bastion** is the

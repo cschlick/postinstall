@@ -2,7 +2,7 @@
 # Vultr startup script: bring a fresh box up as a locked-down gw_node.
 #
 # It clones this repo, hardens the host with the gw_node profile (SSH reachable
-# ONLY over the gw-mesh overlay), then joins the mesh. Public SSH is closed, so
+# ONLY over the gw-pm overlay), then joins the mesh. Public SSH is closed, so
 # until the mesh is up the Vultr web console is your only way in; keep it handy.
 #
 # Paste this into the Vultr startup script field. Do NOT commit a real token:
@@ -22,9 +22,9 @@ apt-get install -y -qq git ansible
 rm -rf $CLONE_DIR
 git clone $REPO $CLONE_DIR
 
-# harden + lock SSH to the gw-mesh overlay (gw_node profile)
+# harden + lock SSH to the gw-pm overlay (gw_node profile)
 GW_NODE=1 bash $CLONE_DIR/apply.sh
 
-# join the mesh (creates gw-mesh; SSH-over-mesh works once it is up).
+# join the mesh (creates gw-pm; SSH-over-mesh works once it is up).
 # Guarded so a reboot re-run with a spent single-use token does not fail.
 gw status >/dev/null 2>&1 || gw join $TOKEN

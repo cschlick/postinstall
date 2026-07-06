@@ -7,12 +7,12 @@ nftables_ssh_port: 22
 nftables_extra_tcp_ports: []
 
 # SSH exposure. DEFAULT = public: SSH reachable from the internet, so a node can
-# never be locked out before its mesh is up. Lock a node down by tagging it
-# "gw_node" (group_vars/tag_gw_node.yml sets nftables_ssh_public: false), which
+# never be locked out before its mesh is up. Lock a node down via the gw_node
+# profile (group_vars/gw_node.yml sets nftables_ssh_public: false), which
 # restricts SSH to the VPN overlay interface (nftables_ssh_iifname) only.
 nftables_ssh_public: true
-nftables_ssh_iifname: gw-mesh
+nftables_ssh_iifname: gw-pm
 
-# Also accept SSH over IPv4 (open profile; pair with ssh_listen_ipv4 so sshd
+# Also accept SSH over IPv4 (dev profile; pair with ssh_listen_ipv4 so sshd
 # actually listens on 0.0.0.0). Default: IPv6-only, like everything else.
 nftables_ssh_ipv4: false

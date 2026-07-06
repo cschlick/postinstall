@@ -49,7 +49,7 @@ table inet filter {
         # fails INTO the drop policy past the threshold, locking out bursts.
         ip6 saddr ::/0 tcp dport {{ nftables_ssh_port }} ct state new accept
 {% if nftables_ssh_ipv4 %}
-        # open profile: SSH from IPv4 too (sshd listens on 0.0.0.0 via
+        # dev profile: SSH from IPv4 too (sshd listens on 0.0.0.0 via
         # ssh_listen_ipv4).
         ip saddr 0.0.0.0/0 tcp dport {{ nftables_ssh_port }} ct state new accept
 {% endif %}
@@ -65,11 +65,11 @@ table inet filter {
         # control/enroll TCP planes bind only to the overlay + loopback, so each
         # is scoped to its own tunnel interface — nothing reaches them off the
         # underlay even if a bind ever regressed:
-        #   gw-mesh  tcp 51902  control plane (when this node is the hub)
+        #   gw-pm    tcp 51902  control plane (when this node is the hub)
         #   gw-door  tcp 51903  enrollment exchange (when hub, during a window)
         # Same on every node so any node can become the hub with no rule change.
         ip6 saddr ::/0 udp dport { 51900, 51901 } ct state new accept
-        iifname "gw-mesh" tcp dport 51902 ct state new accept
+        iifname "gw-pm" tcp dport 51902 ct state new accept
         iifname "gw-door" tcp dport 51903 ct state new accept
 
         # Log anything that reaches the end of the chain before the default
