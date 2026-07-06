@@ -1,0 +1,32 @@
+name: test
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  # End-to-end: three systemd containers (bastion / dev / gw_node), the real
+  # site.yml, idempotence, and per-profile state assertions.
+  profiles:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip install ansible molecule "molecule-plugins[docker]"
+      - run: docker build -t molecule-trixie-systemd ansible/roles/ssh/molecule/default
+      - run: molecule test -s profiles
+        working-directory: ansible
+
+  # Per-role scenarios. Extend the matrix as roles' scenarios are verified
+  # locally (cd ansible/roles/<role> && molecule test).
+  roles:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        role: [accounts]
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip install ansible molecule "molecule-plugins[docker]"
+      - run: docker build -t molecule-trixie-systemd ansible/roles/ssh/molecule/default
+      - run: molecule test
+        working-directory: ansible/roles/${{ matrix.role }}
