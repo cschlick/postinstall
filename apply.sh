@@ -9,7 +9,7 @@
 # Profiles (no flag = bastion: public IPv6 SSH, key-only, ProxyJump):
 #   DEV=1 bash apply.sh      -> dev profile: bastion + IPv4 SSH + password SSH
 #                               + Claude Code; purges no accounts
-#   GW_NODE=1 bash apply.sh  -> gw_node profile: SSH only on the gw-pm overlay,
+#   GW_NODE=1 bash apply.sh  -> gw_node profile: SSH only on the mesh overlay (gw-*),
 #                               no forwarding. The Vultr console is your fallback
 #                               if mesh SSH isn't up yet.
 #   NATS=1 bash apply.sh     -> nats service profile (STACKS on a base profile,

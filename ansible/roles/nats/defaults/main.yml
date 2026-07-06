@@ -1,9 +1,12 @@
 ---
-# NATS listens ONLY on this address — the node's mesh overlay address, taken
-# from the gw-pm interface facts by default (dash becomes underscore in fact
-# names). The matching firewall opening comes from nftables_mesh_tcp_ports in
-# group_vars/nats.yml, NOT from binding alone. Override for tests.
-nats_listen_addr: "{{ ansible_facts.gw_pm.ipv6[0].address }}"
+# NATS listens ONLY on this address — the node's mesh overlay address,
+# discovered from the first gw-* interface that isn't the enrollment door
+# (greasewood names every mesh interface gw-<name>; ansible munges the dash
+# to an underscore in fact keys). Link-locals rejected. The matching firewall
+# opening comes from nftables_mesh_tcp_ports in group_vars/nats.yml, NOT from
+# binding alone. Override per-host for multi-mesh boxes or tests.
+nats_mesh_iface: "{{ ansible_facts.interfaces | select('match', '^gw-') | reject('equalto', 'gw-door') | first }}"
+nats_listen_addr: "{{ (ansible_facts[nats_mesh_iface | replace('-', '_')].ipv6 | rejectattr('address', 'match', '^fe80') | first).address }}"
 
 nats_port: 4222
 nats_monitor_port: 8222
