@@ -1,0 +1,9 @@
+{# Managed by Ansible (roles/account_server). GHCR pull secret — the package is
+   private, so podman needs read:packages to pull the image. 0600 root. #}
+{
+  "auths": {
+    "{{ account_ghcr_registry }}": {
+      "auth": "{{ (account_ghcr_user ~ ':' ~ account_ghcr_token) | b64encode }}"
+    }
+  }
+}

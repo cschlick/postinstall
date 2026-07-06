@@ -16,6 +16,9 @@
 #                               e.g. NATS=1 GW_NODE=1): mesh-only JetStream, mTLS
 #   POSTGRES=1 bash apply.sh -> postgres service profile (stacks like nats):
 #                               mesh-only PostgreSQL, mTLS
+#   ACCOUNT=1 bash apply.sh  -> account service profile (stacks like nats): the
+#                               account plane as a GHCR container (podman quadlet),
+#                               remote Postgres. Needs the vault password (see below).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -27,6 +30,10 @@ EXTRA=()
 [ "${GW_NODE:-0}" = 1 ] && EXTRA+=(-e @"$ROOT/ansible/group_vars/gw_node.yml")
 [ "${NATS:-0}" = 1 ] && EXTRA+=(-e @"$ROOT/ansible/group_vars/nats.yml")
 [ "${POSTGRES:-0}" = 1 ] && EXTRA+=(-e @"$ROOT/ansible/group_vars/postgres.yml")
+# The account profile carries secrets in an ansible-vault file (group_vars/account/
+# vault.yml). Provide the vault password via ANSIBLE_VAULT_PASSWORD_FILE (ansible-pull
+# auto-uses it). vars.yml is committed; vault.yml is operator-placed + gitignored.
+[ "${ACCOUNT:-0}" = 1 ] && EXTRA+=(-e @"$ROOT/ansible/group_vars/account/vars.yml" -e @"$ROOT/ansible/group_vars/account/vault.yml")
 
 # Ensure galaxy collections are present (idempotent; fast when already installed).
 ansible-galaxy collection install -r "$ROOT/ansible/requirements.yml"

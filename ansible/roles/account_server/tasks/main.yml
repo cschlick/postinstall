@@ -1,0 +1,152 @@
+---
+# Deploy the account plane as a pinned GHCR container via a podman quadlet.
+# Network=host, so a REMOTE Postgres (mesh or managed) is reachable over the host
+# stack and :8766 is governed by the host nftables directly. Secrets come from the
+# vault (group_vars/account/vault.yml); this role never carries a secret value.
+
+# --- fail fast on missing required config / dev-default secrets ----------------
+# Mirrors the server's own boot guard: refuse to deploy an insecure or unbootable
+# config instead of shipping one that fails (or, worse, silently forges vouchers).
+- name: Assert required deploy config is set
+  ansible.builtin.assert:
+    quiet: true
+    that:
+      - account_image_tag | length > 0
+      - account_db_url | length > 0
+      - account_ghcr_user | length > 0
+      - account_ghcr_token | default('') | length > 0
+      - account_voucher_seed | default('') | length > 0
+      - account_voucher_seed | default('') != ('0' * 64)
+      - account_anon_issuer_key | default('') | length > 0
+    fail_msg: >-
+      account_server needs (from group_vars/account + the vault): account_image_tag,
+      account_db_url, account_ghcr_user, account_ghcr_token, a non-dev-default
+      account_voucher_seed (not 64 zeros), and account_anon_issuer_key (PEM).
+
+- name: Install podman (application-workload runtime)
+  ansible.builtin.apt:
+    name: podman
+    state: present
+    update_cache: true
+
+# The image runs as uid/gid 10001; rootful podman maps that to the host, so the
+# host needs a matching pm identity to OWN the bind-mounted secrets.
+- name: Create the pm group (matches the image gid)
+  ansible.builtin.group:
+    name: pm
+    gid: "{{ account_gid }}"
+    system: true
+
+- name: Create the pm user (matches the image uid)
+  ansible.builtin.user:
+    name: pm
+    uid: "{{ account_uid }}"
+    group: pm
+    system: true
+    create_home: false
+    shell: /usr/sbin/nologin
+
+- name: Ensure config + quadlet directories
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: "{{ item.owner | default('root') }}"
+    group: "{{ item.group | default('root') }}"
+    mode: "{{ item.mode }}"
+  loop:
+    - { path: /etc/postmodern, mode: "0755" }
+    - { path: /etc/containers, mode: "0755" }
+    - { path: /etc/containers/systemd, mode: "0755" }
+    - { path: "{{ account_secrets_dir }}", mode: "0750", owner: root, group: pm }
+  loop_control:
+    label: "{{ item.path }}"
+
+# --- GHCR pull secret (the package is PRIVATE) ---------------------------------
+- name: Install the GHCR pull-secret authfile
+  ansible.builtin.template:
+    src: pm-ghcr-auth.json.j2
+    dest: "{{ account_authfile }}"
+    owner: root
+    group: root
+    mode: "0600"
+  no_log: true
+
+# --- DB TLS material -----------------------------------------------------------
+# Self-hosted-mesh-PG option: mint the DB CLIENT cert from the mesh CA on this host
+# (needs a matching greasewood 'account' profile). Off for a managed DB.
+- name: Request the DB client certificate from the mesh CA
+  ansible.builtin.command:
+    cmd: "gw cert-request --profile {{ account_db_cert_profile }}"
+    creates: "{{ account_db_cert_creates | default(account_secrets_dir + '/db-client.crt') }}"
+  when: account_db_cert_manage
+
+- name: Install DB/TLS files referenced by the DSN (read-only, uid 10001)
+  ansible.builtin.copy:
+    src: "{{ item.src | default(omit) }}"
+    content: "{{ item.content | default(omit) }}"
+    dest: "{{ account_secrets_dir }}/{{ item.dest }}"
+    owner: "{{ account_uid }}"
+    group: "{{ account_gid }}"
+    mode: "{{ item.mode | default('0640') }}"
+  loop: "{{ account_db_tls_files }}"
+  loop_control:
+    label: "{{ item.dest }}"
+  no_log: true
+
+# The anon-issuer PRIVATE key (blind-RSA). Written from the vault to a file the
+# container reads via ANON_ISSUER_KEY (a path) — keeps the PEM out of the env file.
+- name: Install the anon-issuer private key
+  ansible.builtin.copy:
+    content: "{{ account_anon_issuer_key }}"
+    dest: "{{ account_secrets_dir }}/anon-issuer-priv.pem"
+    owner: "{{ account_uid }}"
+    group: "{{ account_gid }}"
+    mode: "0600"
+  no_log: true
+
+# --- env + quadlet -------------------------------------------------------------
+- name: Render the account server env file
+  ansible.builtin.template:
+    src: account.env.j2
+    dest: "{{ account_env_file }}"
+    owner: root
+    group: root
+    mode: "0600"          # read only by root (podman injects it into the container)
+  no_log: true
+  notify: Restart account server
+
+- name: Install the account.container quadlet
+  ansible.builtin.template:
+    src: account.container.j2
+    dest: "{{ account_quadlet }}"
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - Reload systemd
+    - Restart account server
+
+# Quadlet generates account.service from account.container on daemon-reload; do it
+# now (before enable/start) so the unit exists on the first run.
+- name: Reload systemd so the quadlet generates account.service
+  ansible.builtin.systemd_service:
+    daemon_reload: true
+
+- name: Enable and start the account server
+  ansible.builtin.systemd_service:
+    name: account.service
+    enabled: true
+    state: started
+  when: account_deploy_run
+
+# --- deploy gate: the server serves /healthz once the DB connected at startup ---
+- name: Wait for the account server to become healthy
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ account_port }}/healthz"
+    status_code: 200
+  register: account_health
+  retries: "{{ account_health_retries }}"
+  delay: "{{ account_health_delay }}"
+  until: account_health.status == 200
+  changed_when: false
+  when: account_deploy_run

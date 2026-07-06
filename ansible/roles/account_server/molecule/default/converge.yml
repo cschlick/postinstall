@@ -1,0 +1,22 @@
+---
+- name: Converge
+  hosts: all
+  become: true
+  vars:
+    # Stage config only — the private GHCR image can't be pulled without creds in
+    # the sandbox, so we verify RENDERING (env/quadlet/authfile), not a live run.
+    account_deploy_run: false
+    # Minimal required config + dummy secrets (would come from group_vars/account +
+    # the vault on a real host).
+    account_image_tag: "v0.0.0-test"
+    account_ghcr_user: "test-bot"
+    account_ghcr_token: "ghp_testtoken"
+    account_db_url: "postgresql://pm@db.example:5432/account?sslmode=verify-full&sslrootcert=/etc/pm/db-ca.crt"
+    account_voucher_seed: "1111111111111111111111111111111111111111111111111111111111111111"
+    account_anon_issuer_key: |
+      -----BEGIN PRIVATE KEY-----
+      TEST-NOT-A-REAL-KEY
+      -----END PRIVATE KEY-----
+    account_welcome_bot: "chad"
+  roles:
+    - role: account_server

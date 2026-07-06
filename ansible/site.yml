@@ -35,6 +35,12 @@
     - role: postgres
       when: postgres_enabled | default(false)
       tags: [postgres]
+    # account profile only (group_vars/account/; stacks like nats/postgres).
+    # The account plane runs as a GHCR container via a podman quadlet — an
+    # application workload, unlike the native mesh infra above.
+    - role: account_server
+      when: account_server_enabled | default(false)
+      tags: [account_server]
     - role: auditd
       tags: [auditd]
     - role: pwquality

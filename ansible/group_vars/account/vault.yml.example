@@ -1,0 +1,39 @@
+---
+# SECRETS for the account profile. Copy to vault.yml and ENCRYPT it:
+#
+#   cd ansible
+#   cp group_vars/account/vault.yml.example group_vars/account/vault.yml
+#   # fill in the real values, then:
+#   ansible-vault encrypt group_vars/account/vault.yml
+#
+# vault.yml is gitignored (so a plaintext copy is never committed by accident).
+# Once encrypted it is safe to commit if you choose: git add -f group_vars/account/vault.yml
+#
+# Provide the vault password at apply time via either:
+#   export ANSIBLE_VAULT_PASSWORD_FILE=~/.pm-vault-pass   # ansible/ansible-pull auto-use it
+#   # ...or pass --ask-vault-pass through fleet.sh.
+#
+# These are the PRIVATE minting keys (this host mints; the chat host only verifies
+# with the matching public halves). A leaked VOUCHER_SEED / anon-issuer key is a
+# total sybil bypass — treat this file accordingly. See postmodern-accounts/DEPLOY.md §3
+# for how to generate them and the chat-host public counterparts.
+
+# GHCR token with read:packages (pairs with account_ghcr_user in vars.yml).
+account_ghcr_token: "ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+
+# ed25519 voucher seed — 64 hex chars. Generate:
+#   .venv/bin/python -c "import wire,secrets; s=secrets.token_hex(32); print(s, wire.voucher_pubkey(s))"
+# (the second value is the chat host's CHAT_VOUCHER_PUBKEY).
+account_voucher_seed: "0000000000000000000000000000000000000000000000000000000000000000"
+
+# Anon-issuer blind-RSA PRIVATE key, full PEM (this host signs; chat host gets the
+# public PEM as CHAT_ANON_ISSUER_PUB). Generate:
+#   openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out anon-issuer-priv.pem
+#   openssl rsa -pubout -in anon-issuer-priv.pem -out anon-issuer-pub.pem
+account_anon_issuer_key: |
+  -----BEGIN PRIVATE KEY-----
+  ...paste the full PEM here...
+  -----END PRIVATE KEY-----
+
+# Optional: SMTP password when account_email_backend == 'smtp'.
+# account_smtp_pass: "..."

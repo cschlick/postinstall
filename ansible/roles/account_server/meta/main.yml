@@ -1,0 +1,15 @@
+---
+galaxy_info:
+  role_name: account_server
+  author: cschlick
+  description: >-
+    postmodern account plane as a pinned GHCR container via a podman quadlet
+    (Network=host, remote Postgres, /healthz deploy gate). Runtime contract:
+    postmodern-accounts/CONTAINER.md.
+  license: MIT
+  min_ansible_version: "2.15"
+  platforms:
+    - name: Debian
+      versions:
+        - trixie
+dependencies: []

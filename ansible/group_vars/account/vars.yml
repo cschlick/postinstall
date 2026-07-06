@@ -1,0 +1,42 @@
+---
+# The account service profile — STACKS on a base profile (like nats/postgres):
+# the host sits in BOTH groups (usually gw_node + account) in the deploy repo's
+# rendered inventory (postmodern-deploy; `pmdeploy create --profile gw_node,account`),
+# or locally ACCOUNT=1 GW_NODE=1 bash apply.sh. It only adds account-server
+# concerns; SSH exposure still comes from the base profile.
+#
+# Runs the postmodern account plane (roles/account_server) as a pinned GHCR
+# container via a podman quadlet. Backend is a REMOTE Postgres (mesh or managed) —
+# never the local socket. SECRETS live in the sibling vault.yml (ansible-vault):
+# account_ghcr_token, account_voucher_seed, account_anon_issuer_key. Both files
+# auto-load for hosts in the `account` group.
+
+account_server_enabled: true
+
+# --- pin the release the CI published on its v* tag (a digest is even better) ---
+account_image_tag: ""                 # e.g. "v0.3.0" — REQUIRED, set per tier
+
+# --- GHCR pull (private package) — the matching token is in vault.yml ----------
+account_ghcr_user: ""                 # the GitHub user/bot whose read:packages token this is
+
+# --- remote Postgres DSN (TLS specifics live in the DSN; cert files below) -----
+# Managed DB → …?sslmode=verify-full&sslrootcert=/etc/pm/db-ca.crt
+# Self-hosted mesh PG → point at the DB's gw-* address + client mTLS, and set
+#   account_db_cert_manage: true (mint the client cert from the mesh CA here).
+account_db_url: ""                    # e.g. postgresql://pm@db.mesh:5432/account?sslmode=verify-full&sslrootcert=/etc/pm/db-ca.crt&sslcert=/etc/pm/db-client.crt&sslkey=/etc/pm/db-client.key
+
+# TLS material the DSN references, installed read-only under /etc/pm. For a managed
+# DB this is usually just the provider CA; for mesh mTLS, the client cert+key too
+# (or set account_db_cert_manage: true to mint them from the mesh CA).
+account_db_tls_files: []
+#   - { src: files/account/db-ca.crt,     dest: db-ca.crt }
+#   - { src: files/account/db-client.crt, dest: db-client.crt }
+#   - { src: files/account/db-client.key, dest: db-client.key, mode: "0600" }
+
+# --- firewall: the account server is CLIENT-FACING on :8766 --------------------
+# Open it to the public internet (IPv4+IPv6). If you front it with a load balancer
+# / TLS proxy instead, drop this and use nftables_mesh_tcp_ports: [8766] so only
+# the LB (on the mesh) can reach it.
+# NOTE: group_vars lists don't merge — a host that also stacks nats/postgres must
+# list every port it needs in a host_vars override.
+nftables_extra_tcp_ports: [8766]

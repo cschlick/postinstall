@@ -1,0 +1,30 @@
+{# Managed by Ansible (roles/account_server). Quadlet → systemd generates
+   account.service on `systemctl daemon-reload`. Runtime contract:
+   postmodern-accounts/CONTAINER.md. #}
+[Unit]
+Description=postmodern account server (container)
+Documentation=https://github.com/postmodern-you/postmodern-accounts
+After=network-online.target
+Wants=network-online.target
+
+[Container]
+Image={{ account_image }}
+# Private GHCR package → pull with the read:packages authfile.
+AuthFile={{ account_authfile }}
+Pull=missing
+# host stack: reach the REMOTE Postgres (mesh gw-* or managed) with no container
+# networking, and let the host nftables govern :{{ account_port }} directly.
+Network=host
+EnvironmentFile={{ account_env_file }}
+# Secrets (DB TLS material + the anon-issuer key) bind-mounted read-only. The image
+# runs as uid {{ account_uid }}; rootful podman maps that to the host pm user that owns these.
+Volume={{ account_secrets_dir }}:{{ account_secrets_dir }}:ro
+
+[Service]
+Restart=on-failure
+RestartSec=5
+# first boot pulls the image — give it room before systemd calls the start failed.
+TimeoutStartSec=300
+
+[Install]
+WantedBy=multi-user.target

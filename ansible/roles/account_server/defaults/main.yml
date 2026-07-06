@@ -1,0 +1,83 @@
+---
+# roles/account_server — run the postmodern account plane (the private minting
+# keys + real-world identity) as a pinned GHCR container via a podman quadlet.
+# Application workloads run containerized on this fleet (host infra — greasewood,
+# postgres, nats — runs native). Runtime contract: postmodern-accounts/CONTAINER.md.
+#
+# Secrets (account_voucher_seed, account_anon_issuer_key, account_ghcr_token) MUST
+# come from an ansible-vault file — never set them here. See group_vars/account/.
+
+# --- image (pin the immutable tag; a digest is even better in production) ------
+account_image_repo: ghcr.io/postmodern-you/postmodern-accounts
+account_image_tag: ""                       # REQUIRED, e.g. "v0.3.0" — the CI-published release tag
+account_image: "{{ account_image_repo }}:{{ account_image_tag }}"
+
+# --- GHCR pull secret (the package is PRIVATE) ---------------------------------
+# A GitHub token with read:packages. account_ghcr_token comes from the vault.
+account_ghcr_registry: ghcr.io
+account_ghcr_user: ""                        # the GitHub user/bot the token belongs to
+account_authfile: /etc/containers/pm-ghcr-auth.json
+
+# --- run user / paths ----------------------------------------------------------
+# The image runs as uid/gid 10001 ('pm'); rootful podman maps that straight to the
+# host, so mounted secrets must be readable by host uid/gid 10001. We create the
+# host pm user to own them.
+account_uid: 10001
+account_gid: 10001
+account_env_file: /etc/postmodern/account.env
+account_secrets_dir: /etc/pm               # certs + keys live here, bind-mounted read-only
+account_quadlet: /etc/containers/systemd/account.container
+
+# --- network / bind ------------------------------------------------------------
+# Network=host: the container uses the host stack, so it reaches a REMOTE Postgres
+# (mesh gw-* address OR a managed endpoint) with no container-network plumbing, and
+# :8766 is governed by the host's nftables directly (no podman NAT layer). The port
+# OPENING is a firewall concern — set it in group_vars/account/ (public via
+# nftables_extra_tcp_ports, or mesh-only via nftables_mesh_tcp_ports if behind an LB).
+account_port: 8766
+
+# --- required runtime config ---------------------------------------------------
+account_env: production                      # turns on the boot guards (fail-fast on dev-default secrets)
+# The Postgres DSN. REMOTE in every deployed tier (never the local socket): a
+# mesh PG (…?sslmode=verify-full&sslcert=…&sslkey=…&sslrootcert=…) or a managed DB.
+# The TLS material it references is placed by account_db_tls_files below.
+account_db_url: ""                           # REQUIRED — a postgresql://… DSN
+
+# TLS/cert files to install under {{ account_secrets_dir }} (read-only, uid 10001),
+# referenced by account_db_url / account_tls_*. Each: {src, dest, mode(dflt "0640")}.
+# `src` is a path on the control host (or use content:). Empty for a managed DB that
+# needs only a public CA you ship as one entry.
+#   - { src: files/db-ca.crt,     dest: db-ca.crt }
+#   - { src: files/db-client.crt, dest: db-client.crt }
+#   - { src: files/db-client.key, dest: db-client.key, mode: "0600" }
+account_db_tls_files: []
+
+# Self-hosted-mesh-PG only: obtain the DB CLIENT cert from the mesh CA on this host
+# (mirrors the postgres role's server-cert issuance). Leave false for a managed DB or
+# when you place the client cert via account_db_tls_files.
+account_db_cert_manage: false
+account_db_cert_profile: account            # gw cert-request --profile <this>
+
+# --- optional on-wire TLS (terminate wss:// in-process; else front with a proxy) -
+account_tls_cert: ""                         # path under the container (a mounted file)
+account_tls_key: ""
+
+# --- app knobs (see postmodern-accounts/config.py for the full list) -----------
+account_log_level: INFO
+account_voucher_budget: 5
+account_anon_token_budget: 200
+# Email verification: 'console' only prints the token (DEV) — set 'smtp' + SMTP_*
+# for a real tier. SMTP_PASS, if used, belongs in the vault.
+account_email_backend: console
+account_smtp: {}                             # e.g. {host: ..., port: 587, user: ..., from: ..., verify_base: https://…/verify}
+# Keep in sync with the chat host's bot config.
+account_welcome_bot: ""
+
+# --- health gate ---------------------------------------------------------------
+account_health_retries: 30
+account_health_delay: 2
+
+# Stage config only (render env/quadlet/authfile) WITHOUT enabling/starting the
+# unit or waiting on /healthz. Molecule sets this false — the private image can't
+# be pulled without creds there — so the scenario tests rendering, not a live run.
+account_deploy_run: true
