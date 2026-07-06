@@ -14,6 +14,8 @@
 #                               if mesh SSH isn't up yet.
 #   NATS=1 bash apply.sh     -> nats service profile (STACKS on a base profile,
 #                               e.g. NATS=1 GW_NODE=1): mesh-only JetStream, mTLS
+#   POSTGRES=1 bash apply.sh -> postgres service profile (stacks like nats):
+#                               mesh-only PostgreSQL, mTLS
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -24,6 +26,7 @@ EXTRA=()
 [ "${DEV:-0}" = 1 ] && EXTRA+=(-e @"$ROOT/ansible/group_vars/dev.yml")
 [ "${GW_NODE:-0}" = 1 ] && EXTRA+=(-e @"$ROOT/ansible/group_vars/gw_node.yml")
 [ "${NATS:-0}" = 1 ] && EXTRA+=(-e @"$ROOT/ansible/group_vars/nats.yml")
+[ "${POSTGRES:-0}" = 1 ] && EXTRA+=(-e @"$ROOT/ansible/group_vars/postgres.yml")
 
 # Ensure galaxy collections are present (idempotent; fast when already installed).
 ansible-galaxy collection install -r "$ROOT/ansible/requirements.yml"

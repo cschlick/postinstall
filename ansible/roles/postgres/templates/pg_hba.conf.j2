@@ -1,0 +1,15 @@
+# {{ ansible_managed }}
+# mTLS-only access, mirroring the nats role's verify:true — possession of a
+# client cert signed by the mesh CA IS the credential (clientcert=verify-ca).
+# There is NO non-TLS TCP path: plaintext and certless connections have no
+# matching line and are rejected outright.
+
+# Local unix-socket admin (peer = same OS user), unchanged from Debian stock.
+local   all   postgres   peer
+local   all   all        peer
+
+# Mesh clients: TLS required (hostssl), client cert required + verified
+# against ssl_ca_file. Tighten to auth method `cert` later if you want the
+# cert CN to have to match the database user.
+hostssl all   all   ::/0        trust clientcert=verify-ca
+hostssl all   all   0.0.0.0/0   trust clientcert=verify-ca

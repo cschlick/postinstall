@@ -1,0 +1,29 @@
+---
+- name: Verify
+  hosts: all
+  become: true
+  tasks:
+    - name: Check postgresql is active
+      ansible.builtin.command: systemctl is-active postgresql
+      changed_when: false
+
+    - name: Install the mTLS checker (and psql for it)
+      ansible.builtin.copy:
+        src: pg_mtls_check.sh
+        dest: /usr/local/bin/pg_mtls_check.sh
+        mode: "0755"
+
+    # Plaintext rejected; certless TLS rejected; CA-signed client SELECT 1.
+    # Client key must be 0600 for libpq — copy it out of the shared dir.
+    - name: Place a 0600 copy of the client key
+      ansible.builtin.copy:
+        src: /etc/postgres/tls/client.key
+        dest: /root/pg-client.key
+        remote_src: true
+        mode: "0600"
+
+    - name: Run the mTLS checks
+      ansible.builtin.command: >-
+        /usr/local/bin/pg_mtls_check.sh ::1 15432
+        /etc/postgres/tls/ca.crt /etc/postgres/tls/client.crt /root/pg-client.key
+      changed_when: false

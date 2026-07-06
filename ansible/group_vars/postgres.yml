@@ -1,0 +1,15 @@
+---
+# The postgres service profile — STACKS on a base profile rather than
+# replacing it: put the host in BOTH groups (usually gw_node + postgres) in
+# inventory/hosts.yml, or locally POSTGRES=1 GW_NODE=1 bash apply.sh. It only
+# adds postgres concerns; SSH exposure still comes from the base profile.
+
+# Run the postgres role (roles/postgres): bound to the mesh overlay address,
+# mutual TLS via the mesh CA (gw cert-request --profile postgres).
+postgres_enabled: true
+
+# Open 5432 on the overlay interface ONLY (mesh-only — deliberately not the
+# public nftables_extra_tcp_ports). NOTE: group_vars don't merge lists — a
+# host stacking BOTH nats and postgres needs a host_vars override listing
+# every mesh port, e.g. nftables_mesh_tcp_ports: [4222, 8222, 5432].
+nftables_mesh_tcp_ports: [5432]

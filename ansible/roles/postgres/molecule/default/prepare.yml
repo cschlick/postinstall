@@ -1,0 +1,36 @@
+---
+# Generate throwaway TLS material where `gw cert-request` would place the
+# mesh CA's (no mesh in the container; converge sets postgres_cert_manage
+# false). OpenSSL 3 / libpq validate strictly: the CA needs CA:true +
+# keyCertSign, the leaves need serverAuth/clientAuth.
+- name: Prepare
+  hosts: all
+  become: true
+  tasks:
+    - name: Create the TLS directory
+      ansible.builtin.file:
+        path: /etc/postgres/tls
+        state: directory
+        mode: "0755"
+
+    - name: Generate a test CA, server and client certificates
+      ansible.builtin.shell: |
+        set -e
+        cd /etc/postgres/tls
+        openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:P-256 \
+          -keyout ca.key -out ca.crt -days 30 -nodes -subj "/CN=molecule-test-ca" \
+          -addext "basicConstraints=critical,CA:true" \
+          -addext "keyUsage=critical,keyCertSign"
+        printf 'basicConstraints=CA:false\nkeyUsage=digitalSignature\nextendedKeyUsage=serverAuth\n' > server.ext
+        openssl req -newkey ec -pkeyopt ec_paramgen_curve:P-256 \
+          -keyout server.key -out server.csr -nodes -subj "/CN=localhost"
+        openssl x509 -req -in server.csr -CA ca.crt -CAkey ca.key \
+          -CAcreateserial -out server.crt -days 30 -extfile server.ext
+        printf 'basicConstraints=CA:false\nkeyUsage=digitalSignature\nextendedKeyUsage=clientAuth\n' > client.ext
+        openssl req -newkey ec -pkeyopt ec_paramgen_curve:P-256 \
+          -keyout client.key -out client.csr -nodes -subj "/CN=molecule-client"
+        openssl x509 -req -in client.csr -CA ca.crt -CAkey ca.key \
+          -CAcreateserial -out client.crt -days 30 -extfile client.ext
+        chmod 644 server.key server.crt ca.crt client.key client.crt
+      args:
+        creates: /etc/postgres/tls/server.crt

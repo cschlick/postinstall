@@ -1,0 +1,20 @@
+---
+# Postgres listens ONLY on this address — the node's mesh overlay address,
+# discovered exactly like the nats role does (first gw-* interface that isn't
+# the enrollment door, link-locals rejected). The firewall opening comes from
+# nftables_mesh_tcp_ports in group_vars/postgres.yml, NOT from binding alone.
+# Override per-host for multi-mesh boxes or tests.
+postgres_mesh_iface: "{{ ansible_facts.interfaces | select('match', '^gw-') | reject('equalto', 'gw-door') | first }}"
+postgres_listen_addr: "{{ (ansible_facts[postgres_mesh_iface | replace('-', '_')].ipv6 | rejectattr('address', 'match', '^fe80') | first).address }}"
+
+postgres_port: 5432
+# Debian 13 (trixie) ships PostgreSQL 17; config lives under
+# /etc/postgresql/<version>/main.
+postgres_version: "17"
+postgres_tls_dir: /etc/postgres/tls
+
+# Obtain + auto-renew the server cert from the mesh CA via
+# `gw cert-request --profile postgres` (registers renewal + a reload hook —
+# postgres reloads its certs on SIGHUP). Tests set this false and pre-place
+# their own certs at postgres_tls_dir.
+postgres_cert_manage: true

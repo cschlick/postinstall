@@ -1,0 +1,61 @@
+---
+# PostgreSQL bound to the mesh overlay only, mutual TLS via the mesh CA —
+# same design as the nats role: possession of a mesh-CA client cert IS the
+# credential (pg_hba: hostssl + trust clientcert=verify-ca; no plain-TCP
+# path exists at all).
+- name: Install postgresql
+  ansible.builtin.apt:
+    name: postgresql
+    state: present
+    update_cache: true
+
+# One-time issuance; the gw daemon then auto-renews at ~half-TTL and reloads
+# postgres itself (certs reload on SIGHUP). Needs the anchor's control plane
+# (51902) reachable over the mesh.
+- name: Request the server certificate from the mesh CA
+  ansible.builtin.command:
+    cmd: gw cert-request --profile postgres
+    creates: "{{ postgres_tls_dir }}/server.crt"
+  when: postgres_cert_manage
+
+# Postgres refuses a key it can't own-and-protect. gw places these correctly
+# on real hosts; normalizing here also covers test-provisioned certs.
+- name: Enforce TLS material ownership
+  ansible.builtin.file:
+    path: "{{ postgres_tls_dir }}/{{ item.name }}"
+    owner: postgres
+    group: postgres
+    mode: "{{ item.mode }}"
+  loop:
+    - {name: server.key, mode: "0600"}
+    - {name: server.crt, mode: "0644"}
+    - {name: ca.crt, mode: "0644"}
+  loop_control:
+    label: "{{ item.name }}"
+
+# Debian's postgresql.conf includes conf.d — the package's stock config stays
+# untouched. The package postinst starts the cluster with that stock config
+# (localhost, no TLS), hence the restart handler rather than a bare start.
+- name: Deploy the mesh/TLS configuration drop-in
+  ansible.builtin.template:
+    src: 99-mesh.conf.j2
+    dest: "/etc/postgresql/{{ postgres_version }}/main/conf.d/99-mesh.conf"
+    owner: postgres
+    group: postgres
+    mode: "0644"
+  notify: Restart postgresql
+
+- name: Deploy pg_hba.conf (mTLS-only access)
+  ansible.builtin.template:
+    src: pg_hba.conf.j2
+    dest: "/etc/postgresql/{{ postgres_version }}/main/pg_hba.conf"
+    owner: postgres
+    group: postgres
+    mode: "0640"
+  notify: Restart postgresql
+
+- name: Enable and start postgresql
+  ansible.builtin.systemd_service:
+    name: postgresql
+    enabled: true
+    state: started

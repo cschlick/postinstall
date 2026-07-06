@@ -178,3 +178,76 @@
         /tmp/nats-check-ca.crt /tmp/nats-check-client.crt /tmp/nats-check-client.key
       changed_when: false
       delegate_to: profiles-gw-node
+
+- name: Verify postgres profile (stacked on gw_node)
+  hosts: postgres
+  become: true
+  tasks:
+    - name: Assert stacked end state (gw_node lockdown + postgres mesh port)
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          # Base gw_node behaviour intact.
+          - "'ip6 saddr ::/0 tcp dport 22' not in v_nft"
+          - "'DisableForwarding yes' in v_sshd"
+          # Postgres port opened on the overlay interface ONLY.
+          - "'iifname \"gw-*\" tcp dport 5432 ct state new accept' in v_nft"
+          - "'dport 5432 ct state new accept' not in (v_nft | replace('iifname \"gw-*\" tcp dport 5432 ct state new accept', ''))"
+
+    - name: Read the postgres config drop-in and pg_hba
+      ansible.builtin.slurp:
+        path: "{{ item }}"
+      loop:
+        - /etc/postgresql/17/main/conf.d/99-mesh.conf
+        - /etc/postgresql/17/main/pg_hba.conf
+      register: verify_pg_conf
+
+    - name: Assert postgres config (non-loopback bind, TLS on, mTLS-only hba)
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          - "(\"listen_addresses = '\" ~ postgres_listen_addr ~ \"'\") in conf"
+          - "'ssl = on' in conf"
+          - "'clientcert=verify-ca' in hba"
+          - "'\nhost ' not in hba"
+      vars:
+        conf: "{{ verify_pg_conf.results[0].content | b64decode }}"
+        hba: "{{ verify_pg_conf.results[1].content | b64decode }}"
+
+    # --- EXTERNAL mTLS check from a different container (see the nats play).
+    - name: Read the client credentials off the postgres host
+      ansible.builtin.slurp:
+        path: "/etc/postgres/tls/{{ item }}"
+      loop: [ca.crt, client.crt, client.key]
+      register: verify_pg_creds
+
+    - name: Place the client credentials on the external tester
+      ansible.builtin.copy:
+        content: "{{ item.content | b64decode }}"
+        dest: "/tmp/pg-check-{{ item.item }}"
+        mode: "0600"
+      loop: "{{ verify_pg_creds.results }}"
+      loop_control:
+        label: "{{ item.item }}"
+      delegate_to: profiles-gw-node
+
+    - name: Install psql and the mTLS checker on the external tester
+      ansible.builtin.apt:
+        name: postgresql-client
+        state: present
+        update_cache: true
+      delegate_to: profiles-gw-node
+
+    - name: Install the mTLS checker on the external tester
+      ansible.builtin.copy:
+        src: ../../roles/postgres/molecule/default/files/pg_mtls_check.sh
+        dest: /tmp/pg_mtls_check.sh
+        mode: "0755"
+      delegate_to: profiles-gw-node
+
+    - name: Run the external mTLS checks against this postgres host
+      ansible.builtin.command: >-
+        bash /tmp/pg_mtls_check.sh {{ postgres_listen_addr }} {{ postgres_port }}
+        /tmp/pg-check-ca.crt /tmp/pg-check-client.crt /tmp/pg-check-client.key
+      changed_when: false
+      delegate_to: profiles-gw-node

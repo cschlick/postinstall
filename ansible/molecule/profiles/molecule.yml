@@ -57,9 +57,22 @@ platforms:
     tmpfs:
       - /run
       - /tmp
-  # The nats profile STACKS on gw_node — this container proves composition.
+  # The service profiles STACK on gw_node — these containers prove composition.
   - name: profiles-nats
     groups: [gw_node, nats]
+    image: molecule-trixie-systemd
+    pre_build_image: true
+    network_mode: "${MOLECULE_NETWORK_MODE:-bridge}"
+    command: /lib/systemd/systemd
+    privileged: true
+    cgroupns_mode: host
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    tmpfs:
+      - /run
+      - /tmp
+  - name: profiles-postgres
+    groups: [gw_node, postgres]
     image: molecule-trixie-systemd
     pre_build_image: true
     network_mode: "${MOLECULE_NETWORK_MODE:-bridge}"
@@ -89,6 +102,9 @@ provisioner:
       profiles-nats:
         ansible_user: root
         ssh_port: 2204
+      profiles-postgres:
+        ansible_user: root
+        ssh_port: 2205
     group_vars:
       all:
         # Stage host-global actions instead of running them (containers).
@@ -113,5 +129,8 @@ provisioner:
         nats_cert_manage: false
         nats_port: 14222
         nats_monitor_port: 18222
+        postgres_listen_addr: "{{ ansible_facts.default_ipv4.address }}"
+        postgres_cert_manage: false
+        postgres_port: 15432
 verifier:
   name: ansible

@@ -31,6 +31,10 @@
     - role: nats
       when: nats_enabled | default(false)
       tags: [nats]
+    # postgres profile only (group_vars/postgres.yml; stacks like nats).
+    - role: postgres
+      when: postgres_enabled | default(false)
+      tags: [postgres]
     - role: auditd
       tags: [auditd]
     - role: pwquality

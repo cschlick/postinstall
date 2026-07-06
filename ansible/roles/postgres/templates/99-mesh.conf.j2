@@ -1,0 +1,10 @@
+# {{ ansible_managed }}
+# Mesh overlay only — not reachable off the mesh WireGuard interface.
+listen_addresses = '{{ postgres_listen_addr }}'
+port = {{ postgres_port }}
+
+# Mutual TLS via the mesh CA (pg_hba.conf enforces the client side).
+ssl = on
+ssl_cert_file = '{{ postgres_tls_dir }}/server.crt'
+ssl_key_file = '{{ postgres_tls_dir }}/server.key'
+ssl_ca_file = '{{ postgres_tls_dir }}/ca.crt'

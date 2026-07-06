@@ -12,6 +12,7 @@ bash apply.sh                     # pull latest from GitLab + apply to THIS host
 DEV=1 bash apply.sh               # same, dev profile (open dev box: IPv4+pw SSH, Claude Code)
 GW_NODE=1 bash apply.sh           # same, gw_node profile (mesh-only SSH, locked down)
 NATS=1 GW_NODE=1 bash apply.sh    # gw_node + nats service profile (mesh-only JetStream, mTLS)
+POSTGRES=1 GW_NODE=1 bash apply.sh  # gw_node + postgres service profile (mesh-only, mTLS)
 IMAGE_BUILD=1 bash apply.sh       # image build (then snapshot in the Vultr panel)
 bash apply_gw.sh                  # greasewood role only — fast iteration
 
@@ -96,8 +97,12 @@ bastion (agent forwarding is off everywhere).
 
 **Service profiles stack on the exposure profiles**: `nats` adds a mesh-only
 NATS JetStream server (mutual TLS via the mesh CA, ports 4222/8222 open on
-the overlay interface only) — put the host in **both** its base group and
-`nats` in the inventory, or `NATS=1 GW_NODE=1 bash apply.sh` locally.
+the overlay interface only); `postgres` adds a mesh-only PostgreSQL the same
+way (mTLS-only pg_hba, port 5432). Put the host in **both** its base group
+and the service group in the inventory, or e.g. `NATS=1 GW_NODE=1 bash
+apply.sh` locally. Stacking several service profiles on ONE host needs a
+host_vars override listing all their mesh ports (group_vars lists don't
+merge): `nftables_mesh_tcp_ports: [4222, 8222, 5432]`.
 
 ## SSH keys
 
@@ -151,6 +156,7 @@ Applied in this order (see `site.yml`). Tag = role name. Run subsets with
 | **greasewood** | Installs the greasewood mesh CLI into `/opt/greasewood` (force-reinstalled from GitLab each apply → always current), symlinks `gw`, installs systemd units (daemon starts itself once a config appears). |
 | **claude_code** | *(dev profile only)* Installs Claude Code for pmuser via the native installer; re-run each apply so it stays current. Symlinks `claude` into `/usr/local/bin`. |
 | **nats** | *(nats profile only)* NATS JetStream bound to the mesh overlay address only, mutual TLS via the mesh CA (`gw cert-request --profile nats`, auto-renewed by the gw daemon). Firewall opens 4222/8222 on the overlay interface only. |
+| **postgres** | *(postgres profile only)* PostgreSQL bound to the mesh overlay address only; pg_hba is mTLS-only (`hostssl` + `clientcert=verify-ca`, no plain-TCP path). Cert via `gw cert-request --profile postgres`. Firewall opens 5432 on the overlay interface only. |
 | **auditd** | Hardened audit ruleset (account/login changes, sudo, module loads, mounts, key files); locked loginuid; optional immutable mode. |
 | **pwquality** | Password-quality policy (`minlen=12`, `minclass=3`, dictionary checks). |
 | **pam** | Strips `nullok` from pam_unix; wires `pam_faillock` lockout into the console/sudo path. |

@@ -1,0 +1,12 @@
+---
+- name: Converge
+  hosts: all
+  become: true
+  vars:
+    # No mesh in the container: bind loopback, use prepare.yml's certs.
+    # High port: sandbox host-net runs share loopback with the host.
+    postgres_listen_addr: "::1"
+    postgres_port: 15432
+    postgres_cert_manage: false
+  roles:
+    - role: postgres
