@@ -39,6 +39,13 @@ table inet filter {
             nd-router-advert         # router sends network prefix and gateway info to hosts
         } accept
 
+        # gw-door (transient enrollment interface) matches the gw-* glob used
+        # below, but must carry ONLY the enrollment exchange: accept its one
+        # port here, then drop everything else arriving on it — BEFORE any
+        # gw-* rule can match. (established/related + ICMP above still apply.)
+        iifname "gw-door" tcp dport 51903 ct state new accept
+        iifname "gw-door" drop
+
         # SSH always reachable over the VPN overlay — the gw_node profile relies
         # on this as its only path in.
         iifname "{{ nftables_mesh_iifname }}" tcp dport {{ nftables_ssh_port }} ct state new accept
@@ -66,15 +73,13 @@ table inet filter {
 
         # greasewood + wireguard. The two WireGuard UDP ports face the underlay
         # (they arrive on the physical NIC), so they accept from anywhere. The
-        # control/enroll TCP planes bind only to the overlay + loopback, so each
-        # is scoped to its own tunnel interface — nothing reaches them off the
-        # underlay even if a bind ever regressed:
-        #   gw-*     tcp 51902  control plane (when this node is the hub)
-        #   gw-door  tcp 51903  enrollment exchange (when hub, during a window)
+        # control plane binds only to the overlay + loopback and is scoped to
+        # the mesh interfaces — nothing reaches it off the underlay even if a
+        # bind ever regressed. (The enrollment port, 51903 on gw-door, is
+        # handled by the early gw-door dispatch above.)
         # Same on every node so any node can become the hub with no rule change.
         ip6 saddr ::/0 udp dport { 51900, 51901 } ct state new accept
         iifname "{{ nftables_mesh_iifname }}" tcp dport 51902 ct state new accept
-        iifname "gw-door" tcp dport 51903 ct state new accept
 
         # Log anything that reaches the end of the chain before the default
         # drop policy takes it. Rate-limited so a flood can't fill the journal;
