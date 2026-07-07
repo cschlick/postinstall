@@ -40,3 +40,13 @@ account_db_tls_files: []
 # NOTE: group_vars lists don't merge — a host that also stacks nats/postgres must
 # list every port it needs in a host_vars override.
 nftables_extra_tcp_ports: [8766]
+
+# --- billing (Paddle) — optional; leave price id blank to keep billing OFF -------
+# When set, the account plane exposes checkout/portal + a webhook receiver. Secrets
+# (account_paddle_api_key, account_paddle_webhook_secret) go in the sibling vault.yml.
+# account_paddle_price_id: "pri_..."
+# account_paddle_api_base: "https://api.paddle.com"      # sandbox is the default
+# account_paddle_success_url: "https://app.example/paid"
+# account_webhook_port: 8787                              # the webhook receiver's own port
+# ...and OPEN that webhook port publicly so Paddle can POST (add it above):
+#   nftables_extra_tcp_ports: [8766, 8787]

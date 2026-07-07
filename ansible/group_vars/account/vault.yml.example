@@ -37,3 +37,8 @@ account_anon_issuer_key: |
 
 # Optional: SMTP password when account_email_backend == 'smtp'.
 # account_smtp_pass: "..."
+
+# Optional: Paddle billing secrets (only if account_paddle_price_id is set in vars.yml).
+# The API key drives checkout/portal; the webhook secret HMAC-verifies Paddle events.
+# account_paddle_api_key: "pdl_live_or_sandbox_..."
+# account_paddle_webhook_secret: "pdl_ntfset_..."

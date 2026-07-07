@@ -73,6 +73,15 @@ account_smtp: {}                             # e.g. {host: ..., port: 587, user:
 # Keep in sync with the chat host's bot config.
 account_welcome_bot: ""
 
+# --- billing (Paddle) — optional; OFF until a price id + the vault key are set ---
+account_paddle_price_id: ""                  # the one subscription plan (v1)
+account_paddle_api_base: "https://sandbox-api.paddle.com"   # → https://api.paddle.com in prod
+account_paddle_success_url: ""               # post-checkout redirect (web app)
+# The webhook receiver's own HTTP port (0 = off). Open it publicly in nftables
+# (Paddle POSTs from the internet) — see group_vars/account/vars.yml.
+account_webhook_port: 0
+# Secrets from the vault: account_paddle_api_key, account_paddle_webhook_secret.
+
 # --- health gate ---------------------------------------------------------------
 account_health_retries: 30
 account_health_delay: 2
