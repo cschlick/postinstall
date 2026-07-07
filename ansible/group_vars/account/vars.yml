@@ -19,11 +19,18 @@ account_image_tag: ""                 # e.g. "v0.3.0" — REQUIRED, set per tier
 # --- GHCR pull (private package) — the matching token is in vault.yml ----------
 account_ghcr_user: ""                 # the GitHub user/bot whose read:packages token this is
 
-# --- remote Postgres DSN (TLS specifics live in the DSN; cert files below) -----
-# Managed DB → …?sslmode=verify-full&sslrootcert=/etc/pm/db-ca.crt
-# Self-hosted mesh PG → point at the DB's gw-* address + client mTLS, and set
-#   account_db_cert_manage: true (mint the client cert from the mesh CA here).
-account_db_url: ""                    # e.g. postgresql://pm@db.mesh:5432/account?sslmode=verify-full&sslrootcert=/etc/pm/db-ca.crt&sslcert=/etc/pm/db-client.crt&sslkey=/etc/pm/db-client.key
+# --- database: LOCAL (co-located postgres) or REMOTE --------------------------
+# EASIEST: co-locate the postgres profile on the SAME host and connect over the
+# local Unix socket — no DSN, no client certs, no secrets. Stack all three:
+#   pmdeploy create db01 --profile gw_node,postgres,account
+# and set:
+account_db_local: false               # true = local socket (the postgres role provisions the db+role)
+#
+# REMOTE (account_db_local: false) — point account_db_url at a mesh or managed DB:
+#   Managed DB → …?sslmode=verify-full&sslrootcert=/etc/pm/db-ca.crt
+#   Self-hosted mesh PG → the DB's gw-* address + client mTLS, and
+#     account_db_cert_manage: true (mint the client cert from the mesh CA here).
+account_db_url: ""                    # REQUIRED when NOT local, e.g. postgresql://pm@db.mesh:5432/account?sslmode=verify-full&sslrootcert=/etc/pm/db-ca.crt&sslcert=/etc/pm/db-client.crt&sslkey=/etc/pm/db-client.key
 
 # TLS material the DSN references, installed read-only under /etc/pm. For a managed
 # DB this is usually just the provider CA; for mesh mTLS, the client cert+key too

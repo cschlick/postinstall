@@ -12,7 +12,8 @@
     quiet: true
     that:
       - account_image_tag | length > 0
-      - account_db_url | length > 0
+      # a database: either the local co-located socket, or a remote DSN
+      - (account_db_local | bool) or (account_db_url | length > 0)
       - account_ghcr_user | length > 0
       - account_ghcr_token | default('') | length > 0
       - account_voucher_seed | default('') | length > 0
@@ -20,8 +21,9 @@
       - account_anon_issuer_key | default('') | length > 0
     fail_msg: >-
       account_server needs (from group_vars/account + the vault): account_image_tag,
-      account_db_url, account_ghcr_user, account_ghcr_token, a non-dev-default
-      account_voucher_seed (not 64 zeros), and account_anon_issuer_key (PEM).
+      a database (account_db_local: true, or account_db_url), account_ghcr_user,
+      account_ghcr_token, a non-dev-default account_voucher_seed (not 64 zeros),
+      and account_anon_issuer_key (PEM).
 
 - name: Install podman (application-workload runtime)
   ansible.builtin.apt:

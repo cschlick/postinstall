@@ -59,3 +59,55 @@
     name: postgresql
     enabled: true
     state: started
+
+# --- local database for a co-located account server ---------------------------
+# When the account profile stacks on THIS host with account_db_local, provision
+# the login role + database it connects to over the Unix socket. Peer auth (the
+# existing `local all all peer` hba line) maps the pm OS user -> the pm role, so
+# no password/TLS is needed for the loopback socket. Raw psql keeps this free of
+# a community.postgresql dependency; each step is guarded to stay idempotent.
+- name: Wait for postgres to accept local connections
+  ansible.builtin.command: pg_isready
+  become_user: postgres
+  register: pg_ready
+  until: pg_ready.rc == 0
+  retries: 30
+  delay: 2
+  changed_when: false
+  when: account_db_local | default(false)
+
+- name: Create the account login role
+  ansible.builtin.command:
+    cmd: >-
+      psql -tAc "SELECT 1 FROM pg_roles WHERE rolname = '{{ account_db_role }}'"
+  become_user: postgres
+  register: pg_role_check
+  changed_when: false
+  when: account_db_local | default(false)
+
+- name: Create the account login role (if missing)
+  ansible.builtin.command:
+    cmd: psql -c "CREATE ROLE {{ account_db_role }} LOGIN"
+  become_user: postgres
+  changed_when: true
+  when:
+    - account_db_local | default(false)
+    - pg_role_check.stdout | default('') != '1'
+
+- name: Check the account database exists
+  ansible.builtin.command:
+    cmd: >-
+      psql -tAc "SELECT 1 FROM pg_database WHERE datname = '{{ account_db_name }}'"
+  become_user: postgres
+  register: pg_db_check
+  changed_when: false
+  when: account_db_local | default(false)
+
+- name: Create the account database owned by the account role (if missing)
+  ansible.builtin.command:
+    cmd: createdb -O {{ account_db_role }} {{ account_db_name }}
+  become_user: postgres
+  changed_when: true
+  when:
+    - account_db_local | default(false)
+    - pg_db_check.stdout | default('') != '1'

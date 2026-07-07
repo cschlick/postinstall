@@ -116,6 +116,13 @@ rather than an apt/venv service. Its secrets (voucher seed, anon-issuer key, GHC
 pull token) live in an ansible-vault file (`group_vars/account/vault.yml`, from
 the `.example`); provide the vault password via `ANSIBLE_VAULT_PASSWORD_FILE`.
 
+**account + postgres, one host, local database.** Stack all three
+(`--profile gw_node,postgres,account`) and set `account_db_local: true`: the
+account container reaches the co-located postgres over the **Unix socket** with
+peer auth as the `pm` user — no DSN, no client certs, no password, never on the
+wire (the postgres role provisions the `account` db + `pm` role). Otherwise
+(`account_db_local: false`) set `account_db_url` to a remote mesh/managed DB.
+
 ## SSH keys
 
 Public keys live in `ansible/group_vars/all.yml` under `ssh_authorized_keys`

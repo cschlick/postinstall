@@ -38,10 +38,22 @@ account_port: 8766
 
 # --- required runtime config ---------------------------------------------------
 account_env: production                      # turns on the boot guards (fail-fast on dev-default secrets)
-# The Postgres DSN. REMOTE in every deployed tier (never the local socket): a
-# mesh PG (…?sslmode=verify-full&sslcert=…&sslkey=…&sslrootcert=…) or a managed DB.
-# The TLS material it references is placed by account_db_tls_files below.
-account_db_url: ""                           # REQUIRED — a postgresql://… DSN
+
+# --- database: local (co-located postgres) OR remote --------------------------
+# Set account_db_local: true to co-locate with the postgres profile on the SAME
+# host and connect over the local Unix socket (peer auth as the pm user — no
+# password, no TLS, never on the wire; the postgres role provisions the db+role).
+# Stack both: --profile gw_node,postgres,account with account_db_local: true.
+# Leave false for a REMOTE Postgres and set account_db_url to a postgresql://…
+# DSN (mesh mTLS or a managed DB) with certs via account_db_tls_files.
+account_db_local: false
+account_db_name: account                     # the database (local mode)
+account_db_role: pm                           # the login role = the pm uid, so peer auth maps straight through
+account_db_socket_dir: /run/postgresql        # Debian's postgres socket dir
+account_db_url: ""                            # REQUIRED when NOT local — a postgresql://… DSN
+# The effective DSN handed to the container: a socket DSN in local mode, else
+# the operator's account_db_url verbatim.
+account_db_url_effective: "{{ 'postgresql://' ~ account_db_role ~ '@/' ~ account_db_name ~ '?host=' ~ account_db_socket_dir if account_db_local else account_db_url }}"
 
 # TLS/cert files to install under {{ account_secrets_dir }} (read-only, uid 10001),
 # referenced by account_db_url / account_tls_*. Each: {src, dest, mode(dflt "0640")}.

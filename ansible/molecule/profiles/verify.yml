@@ -179,8 +179,12 @@
       changed_when: false
       delegate_to: profiles-gw-node
 
+# Standalone postgres only. The merged account host is also in the postgres
+# group but reaches its DB over the LOCAL socket (checked in the account play),
+# so it skips the external mTLS check — which also avoids two postgres hosts
+# racing on the shared tester's fixed /tmp/pg-check-* cert paths.
 - name: Verify postgres profile (stacked on gw_node)
-  hosts: postgres
+  hosts: postgres:!account
   become: true
   tasks:
     - name: Assert stacked end state (gw_node lockdown + postgres mesh port)
@@ -272,6 +276,44 @@
       register: verify_acct_active
       changed_when: false
       failed_when: verify_acct_active.stdout != "active"
+
+    # --- LOCAL DB: the whole point of the merge. Prove the account app's uid
+    # (pm) can reach the co-located postgres over the Unix socket with peer
+    # auth — no password, no TLS. This is the exact path the container (uid
+    # 10001 = pm) uses; running it as the host pm user faithfully mirrors it.
+    - name: Read the rendered env + quadlet
+      ansible.builtin.slurp:
+        src: "{{ item }}"
+      register: verify_acct_files
+      loop:
+        - /etc/postmodern/account.env
+        - /etc/containers/systemd/account.container
+
+    - name: Assert the DSN is the local socket and the socket is mounted
+      vars:
+        env: "{{ verify_acct_files.results[0].content | b64decode }}"
+        quadlet: "{{ verify_acct_files.results[1].content | b64decode }}"
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          - "'ACCOUNT_DB_URL=postgresql://pm@/account?host=/run/postgresql' in env"
+          - "'Volume=/run/postgresql:/run/postgresql:ro' in quadlet"
+
+    # sudo -u pm (not become_user: pm — pm's nologin shell breaks ansible become);
+    # this runs as uid 10001 exactly like the container does.
+    - name: SELECT 1 over the socket as pm (peer auth, no password/TLS)
+      ansible.builtin.command:
+        argv:
+          - sudo
+          - -u
+          - pm
+          - psql
+          - host=/run/postgresql dbname=account
+          - -tAc
+          - SELECT 1
+      register: verify_local_db
+      changed_when: false
+      failed_when: verify_local_db.stdout != "1"
 
     # --- EXTERNAL reachability: hit /healthz from a DIFFERENT container. Under
     # bridge networking (CI) this crosses network namespaces — a real external

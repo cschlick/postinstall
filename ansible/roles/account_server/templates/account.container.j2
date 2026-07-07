@@ -20,6 +20,11 @@ EnvironmentFile={{ account_env_file }}
 # Secrets (DB TLS material + the anon-issuer key) bind-mounted read-only. The image
 # runs as uid {{ account_uid }}; rootful podman maps that to the host pm user that owns these.
 Volume={{ account_secrets_dir }}:{{ account_secrets_dir }}:ro
+{% if account_db_local %}
+# Local DB: bind-mount the postgres socket dir so the container reaches the
+# co-located cluster over the Unix socket (peer auth as pm — no TLS/password).
+Volume={{ account_db_socket_dir }}:{{ account_db_socket_dir }}:ro
+{% endif %}
 
 [Service]
 # Give podman the GHCR pull-secret (quadlet has no [Container] AuthFile key).

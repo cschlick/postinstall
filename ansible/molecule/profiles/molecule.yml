@@ -84,8 +84,9 @@ platforms:
     tmpfs:
       - /run
       - /tmp
+  # Merged: postgres + account co-located, account talks to the LOCAL socket.
   - name: profiles-account
-    groups: [gw_node, account]
+    groups: [gw_node, postgres, account]
     image: molecule-trixie-systemd
     pre_build_image: true
     network_mode: "${MOLECULE_NETWORK_MODE:-bridge}"
@@ -133,7 +134,14 @@ provisioner:
         nftables_extra_tcp_ports: [18766]
         account_ghcr_user: test-bot
         account_ghcr_token: ghp_testtoken
-        account_db_url: "postgresql://pm@db.example:5432/account?sslmode=verify-full&sslrootcert=/etc/pm/db-ca.crt"
+        # LOCAL database: co-located postgres over the Unix socket (peer auth),
+        # no remote DSN. The postgres role provisions the pm role + account db.
+        account_db_local: true
+        # Distinct postgres TCP port from profiles-postgres so the two servers
+        # don't collide under host-net mode (shared loopback in the sandbox; in
+        # CI's bridge mode they have separate IPs). Irrelevant to the account
+        # app, which reaches this cluster over the Unix socket.
+        postgres_port: 15433
         account_voucher_seed: "1111111111111111111111111111111111111111111111111111111111111111"
         account_anon_issuer_key: |
           -----BEGIN PRIVATE KEY-----
