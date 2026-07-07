@@ -12,7 +12,9 @@ Image={{ account_image }}
 # Private GHCR package → podman finds the read:packages authfile via
 # REGISTRY_AUTH_FILE in [Service] below. (AuthFile= is NOT a valid quadlet
 # [Container] key — it makes the generator reject the whole unit.)
-Pull=missing
+# newer = re-check the registry on each (re)start (for a mutable tag like
+# :latest); missing = pull only when absent (immutable version tags).
+Pull={{ 'newer' if account_pull_always else 'missing' }}
 # host stack: reach the REMOTE Postgres (mesh gw-* or managed) with no container
 # networking, and let the host nftables govern :{{ account_port }} directly.
 Network=host

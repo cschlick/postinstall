@@ -13,8 +13,12 @@
 
 account_server_enabled: true
 
-# --- pin the release the CI published on its v* tag (a digest is even better) ---
-account_image_tag: ""                 # e.g. "v0.3.0" — REQUIRED, set per tier
+# --- image tag ----------------------------------------------------------------
+# Using the mutable :latest and re-pulling on every apply (restarts only when
+# the digest actually changed). For a reproducible tier, pin an immutable
+# version tag (e.g. "v0.3.0") and set account_pull_always: false.
+account_image_tag: "latest"
+account_pull_always: true
 
 # --- GHCR pull (private package) — the matching token is in vault.yml ----------
 account_ghcr_user: ""                 # the GitHub user/bot whose read:packages token this is

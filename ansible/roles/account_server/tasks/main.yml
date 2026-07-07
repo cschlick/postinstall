@@ -134,6 +134,27 @@
   ansible.builtin.systemd_service:
     daemon_reload: true
 
+# --- mutable-tag refresh: pull a newer image each apply, restart iff changed --
+# For account_pull_always (e.g. :latest): explicitly pull and compare the image
+# id before/after, so a running service picks up a new build — but ONLY restarts
+# when the digest actually moved (a bare `podman pull` reports nothing useful for
+# idempotence, and Pull=newer alone never restarts an already-running unit).
+- name: Record the current image id
+  ansible.builtin.command: "podman image inspect --format '{{ '{{' }}.Id{{ '}}' }}' {{ account_image }}"
+  register: account_img_before
+  changed_when: false
+  failed_when: false
+  when: account_deploy_run and account_pull_always
+
+- name: Pull the latest image
+  ansible.builtin.command: "podman pull {{ account_image }}"
+  environment:
+    REGISTRY_AUTH_FILE: "{{ account_authfile }}"
+  register: account_pull
+  changed_when: account_img_before.stdout | default('') not in account_pull.stdout
+  notify: Restart account server
+  when: account_deploy_run and account_pull_always
+
 # NB: do NOT `systemctl enable` a quadlet-generated unit — it's transient
 # (lives in /run/systemd/generator) and enable fails. The quadlet's [Install]
 # WantedBy is re-applied by the generator on every boot, so it comes up

@@ -11,6 +11,11 @@
 account_image_repo: ghcr.io/postmodern-you/postmodern-accounts
 account_image_tag: ""                       # REQUIRED, e.g. "v0.3.0" — the CI-published release tag
 account_image: "{{ account_image_repo }}:{{ account_image_tag }}"
+# For a MUTABLE tag (e.g. :latest): true = each apply re-checks the registry and
+# pulls a newer image, restarting the service only if the digest actually
+# changed (quadlet Pull=newer + the explicit pull below). Leave false for an
+# immutable version tag — the image never moves, so there's nothing to re-pull.
+account_pull_always: false
 
 # --- GHCR pull secret (the package is PRIVATE) ---------------------------------
 # A GitHub token with read:packages. account_ghcr_token comes from the vault.

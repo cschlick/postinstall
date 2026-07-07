@@ -130,6 +130,9 @@ provisioner:
         # private GHCR image. Port aligned with the firewall rule below.
         account_image_repo: localhost/account-standin
         account_image_tag: test
+        # The stand-in is a local image with no registry — keep Pull=missing
+        # (group_vars/account sets pull_always true for the real :latest).
+        account_pull_always: false
         account_port: 18766
         nftables_extra_tcp_ports: [18766]
         account_ghcr_user: test-bot
