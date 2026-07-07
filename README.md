@@ -13,6 +13,7 @@ DEV=1 bash apply.sh               # same, dev profile (open dev box: IPv4+pw SSH
 GW_NODE=1 bash apply.sh           # same, gw_node profile (mesh-only SSH, locked down)
 NATS=1 GW_NODE=1 bash apply.sh    # gw_node + nats service profile (mesh-only JetStream, mTLS)
 POSTGRES=1 GW_NODE=1 bash apply.sh  # gw_node + postgres service profile (mesh-only, mTLS)
+ACCOUNT=1 GW_NODE=1 bash apply.sh    # gw_node + account plane (GHCR container/quadlet, remote PG); needs the vault pw
 IMAGE_BUILD=1 bash apply.sh       # image build (then snapshot in the Vultr panel)
 bash apply_gw.sh                  # greasewood role only — fast iteration
 
@@ -35,10 +36,12 @@ Vultr startup-script field (fill in a single-use enrollment token first).
 
 ## Fleet mode
 
-The fleet is a hand-kept list in `ansible/inventory/hosts.yml`: each host
-(IP or hostname) goes under exactly one profile group — `bastion`, `dev`, or
-`gw_node` — and the matching `group_vars/<profile>.yml` applies
-automatically.
+**Inventory does not live in this repo.** The deploy repo
+([postmodern-you/postmodern-deploy](https://github.com/postmodern-you/postmodern-deploy),
+private) creates instances via the Vultr API, records them, and renders an
+ansible hosts file where each host sits in its profile group(s) — the
+matching `group_vars/<profile>.yml` applies automatically. Point fleet.sh at
+it with `FLEET_INVENTORY`.
 Connections are plain SSH as **pmuser**: the control machine needs pmuser's
 private key, and runs need `-K` (sudo prompts for pmuser's password — the
 emergency console password; only `gw` is NOPASSWD). gw_nodes are listed by
@@ -48,6 +51,7 @@ their mesh address and reached via the bastion (ProxyJump — see
 Roll out safely — one group first:
 
 ```bash
+export FLEET_INVENTORY=~/software/postmodern-deploy/inventory/ansible-hosts.yml
 ./fleet.sh list                          # what's in the inventory?
 ./fleet.sh ping                          # reachable as pmuser?
 ./fleet.sh check --limit dev             # dry-run one profile group
@@ -63,8 +67,8 @@ Extra args pass through to ansible (`--limit`, `--check`, `-e ...`).
 
 Profiles decide a host's SSH exposure. Each is a vars file in
 `ansible/group_vars/`; you select one **locally** with an env flag on
-`apply.sh`, or **fleet-wide** by listing the host under that group in
-`ansible/inventory/hosts.yml`:
+`apply.sh`, or **fleet-wide** via the host's group membership in the deploy
+repo's rendered inventory (`pmdeploy create --profile …`):
 
 | Profile | SSH reachable on | Password SSH | Claude Code | Purges accounts | Apply to localhost | Apply via fleet |
 |---------|------------------|--------------|-------------|-----------------|--------------------|-----------------|
@@ -98,11 +102,19 @@ bastion (agent forwarding is off everywhere).
 **Service profiles stack on the exposure profiles**: `nats` adds a mesh-only
 NATS JetStream server (mutual TLS via the mesh CA, ports 4222/8222 open on
 the overlay interface only); `postgres` adds a mesh-only PostgreSQL the same
-way (mTLS-only pg_hba, port 5432). Put the host in **both** its base group
-and the service group in the inventory, or e.g. `NATS=1 GW_NODE=1 bash
-apply.sh` locally. Stacking several service profiles on ONE host needs a
-host_vars override listing all their mesh ports (group_vars lists don't
-merge): `nftables_mesh_tcp_ports: [4222, 8222, 5432]`.
+way (mTLS-only pg_hba, port 5432); `account` runs the postmodern account plane
+as a GHCR **container** (podman quadlet) against a **remote** Postgres, client-
+facing on :8766. Put the host in **both** its base group and the service group
+in the inventory, or e.g. `NATS=1 GW_NODE=1 bash apply.sh` locally. Stacking
+several service profiles on ONE host needs a host_vars override listing all
+their mesh ports (group_vars lists don't merge): `nftables_mesh_tcp_ports:
+[4222, 8222, 5432]`.
+
+Unlike the native mesh infra above, `account` is an **application workload** —
+it runs the CI-published image (`ghcr.io/postmodern-you/postmodern-accounts:<tag>`)
+rather than an apt/venv service. Its secrets (voucher seed, anon-issuer key, GHCR
+pull token) live in an ansible-vault file (`group_vars/account/vault.yml`, from
+the `.example`); provide the vault password via `ANSIBLE_VAULT_PASSWORD_FILE`.
 
 ## SSH keys
 
@@ -157,6 +169,7 @@ Applied in this order (see `site.yml`). Tag = role name. Run subsets with
 | **claude_code** | *(dev profile only)* Installs Claude Code for pmuser via the native installer; re-run each apply so it stays current. Symlinks `claude` into `/usr/local/bin`. |
 | **nats** | *(nats profile only)* NATS JetStream bound to the mesh overlay address only, mutual TLS via the mesh CA (`gw cert-request --profile nats`, auto-renewed by the gw daemon). Firewall opens 4222/8222 on the overlay interface only. |
 | **postgres** | *(postgres profile only)* PostgreSQL bound to the mesh overlay address only; pg_hba is mTLS-only (`hostssl` + `clientcert=verify-ca`, no plain-TCP path). Cert via `gw cert-request --profile postgres`. Firewall opens 5432 on the overlay interface only. |
+| **account_server** | *(account profile only)* The postmodern account plane as a pinned GHCR container via a podman quadlet (`Network=host`, remote Postgres, `/healthz` deploy gate). Secrets from ansible-vault. Runtime contract: `postmodern-accounts/CONTAINER.md`. |
 | **auditd** | Hardened audit ruleset (account/login changes, sudo, module loads, mounts, key files); locked loginuid; optional immutable mode. |
 | **pwquality** | Password-quality policy (`minlen=12`, `minclass=3`, dictionary checks). |
 | **pam** | Strips `nullok` from pam_unix; wires `pam_faillock` lockout into the console/sudo path. |
@@ -189,7 +202,6 @@ documents the rest.
 ansible/
   site.yml                 # the playbook — all roles, each tagged
   requirements.yml         # Galaxy collections
-  inventory/hosts.yml      # the fleet: hosts keyed to profile groups (fleet mode)
   group_vars/all.yml       # main tunables (SSH keys, AllowUsers, password hash, …)
   group_vars/<profile>.yml # host profiles (bastion, dev, gw_node)
   roles/<role>/            # one role per hardening concern (+ molecule/ test)

@@ -80,3 +80,58 @@
         chmod 644 server.key server.crt root.crt client.key client.crt
       args:
         creates: /etc/postgres/tls/server.crt
+
+# account host: build the offline stand-in image (no private GHCR pull) so the
+# account role's live run has an image serving /healthz at the test port.
+- name: Prepare account stand-in image
+  hosts: account
+  become: true
+  vars:
+    standin_port: 18766
+  tasks:
+    - name: Install podman + busybox (to build/run the stand-in)
+      ansible.builtin.apt:
+        name: [podman, busybox-static, curl]
+        state: present
+        update_cache: true
+
+    - name: Stage the stand-in build context
+      ansible.builtin.file:
+        path: /tmp/standin/www
+        state: directory
+        mode: "0755"
+
+    - name: Drop a static busybox into the context
+      ansible.builtin.copy:
+        src: /bin/busybox
+        dest: /tmp/standin/busybox
+        remote_src: true
+        mode: "0755"
+
+    - name: The /healthz body
+      ansible.builtin.copy:
+        content: "healthy\n"
+        dest: /tmp/standin/www/healthz
+        mode: "0644"
+
+    - name: The Containerfile (scratch + busybox httpd)
+      ansible.builtin.copy:
+        dest: /tmp/standin/Containerfile
+        mode: "0644"
+        content: |
+          FROM scratch
+          COPY busybox /busybox
+          COPY www /www
+          ENTRYPOINT ["/busybox","httpd","-f","-p","{{ standin_port }}","-h","/www"]
+
+    - name: Is the stand-in image already built?
+      ansible.builtin.command: podman image exists localhost/account-standin:test
+      register: standin_exists
+      changed_when: false
+      failed_when: false
+
+    - name: Build the stand-in image
+      ansible.builtin.command:
+        cmd: podman build -t localhost/account-standin:test /tmp/standin
+      when: standin_exists.rc != 0
+      changed_when: true

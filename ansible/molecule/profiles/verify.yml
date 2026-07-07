@@ -251,3 +251,34 @@
         /tmp/pg-check-root.crt /tmp/pg-check-client.crt /tmp/pg-check-client.key
       changed_when: false
       delegate_to: profiles-gw-node
+
+- name: Verify account profile (stacked on gw_node)
+  hosts: account
+  become: true
+  tasks:
+    - name: Assert stacked end state (gw_node lockdown + public :18766 rule)
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          # Base gw_node behaviour intact.
+          - "'ip6 saddr ::/0 tcp dport 22' not in v_nft"
+          - "'DisableForwarding yes' in v_sshd"
+          # The account server is CLIENT-FACING: its port is public (no iifname),
+          # unlike the mesh-only nats/postgres ports.
+          - "'tcp dport 18766 ct state new accept' in v_nft"
+
+    - name: Assert account.service is active (quadlet -> systemd -> podman)
+      ansible.builtin.command: systemctl is-active account.service
+      register: verify_acct_active
+      changed_when: false
+      failed_when: verify_acct_active.stdout != "active"
+
+    # --- EXTERNAL reachability: hit /healthz from a DIFFERENT container. Under
+    # bridge networking (CI) this crosses network namespaces — a real external
+    # client reaching the host-net-bound container port.
+    - name: Hit /healthz from the external tester
+      ansible.builtin.uri:
+        url: "http://{{ ansible_facts.default_ipv4.address }}:18766/healthz"
+        status_code: 200
+      changed_when: false
+      delegate_to: profiles-gw-node

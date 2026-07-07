@@ -9,8 +9,9 @@ Wants=network-online.target
 
 [Container]
 Image={{ account_image }}
-# Private GHCR package → pull with the read:packages authfile.
-AuthFile={{ account_authfile }}
+# Private GHCR package → podman finds the read:packages authfile via
+# REGISTRY_AUTH_FILE in [Service] below. (AuthFile= is NOT a valid quadlet
+# [Container] key — it makes the generator reject the whole unit.)
 Pull=missing
 # host stack: reach the REMOTE Postgres (mesh gw-* or managed) with no container
 # networking, and let the host nftables govern :{{ account_port }} directly.
@@ -21,6 +22,8 @@ EnvironmentFile={{ account_env_file }}
 Volume={{ account_secrets_dir }}:{{ account_secrets_dir }}:ro
 
 [Service]
+# Give podman the GHCR pull-secret (quadlet has no [Container] AuthFile key).
+Environment=REGISTRY_AUTH_FILE={{ account_authfile }}
 Restart=on-failure
 RestartSec=5
 # first boot pulls the image — give it room before systemd calls the start failed.

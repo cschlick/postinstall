@@ -132,10 +132,13 @@
   ansible.builtin.systemd_service:
     daemon_reload: true
 
-- name: Enable and start the account server
+# NB: do NOT `systemctl enable` a quadlet-generated unit — it's transient
+# (lives in /run/systemd/generator) and enable fails. The quadlet's [Install]
+# WantedBy is re-applied by the generator on every boot, so it comes up
+# automatically without an enable.
+- name: Start the account server
   ansible.builtin.systemd_service:
     name: account.service
-    enabled: true
     state: started
   when: account_deploy_run
 

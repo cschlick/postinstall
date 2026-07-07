@@ -84,6 +84,19 @@ platforms:
     tmpfs:
       - /run
       - /tmp
+  - name: profiles-account
+    groups: [gw_node, account]
+    image: molecule-trixie-systemd
+    pre_build_image: true
+    network_mode: "${MOLECULE_NETWORK_MODE:-bridge}"
+    command: /lib/systemd/systemd
+    privileged: true
+    cgroupns_mode: host
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    tmpfs:
+      - /run
+      - /tmp
 provisioner:
   name: ansible
   env:
@@ -105,6 +118,27 @@ provisioner:
       profiles-postgres:
         ansible_user: root
         ssh_port: 2205
+      profiles-account:
+        ansible_user: root
+        ssh_port: 2206
+        # Account test config lives in INVENTORY host_vars (not group_vars.account
+        # below) because the repo's playbook-adjacent group_vars/account/vars.yml
+        # — with its empty, must-be-filled account_image_tag etc. — outranks
+        # inventory group_vars; inventory host_vars outrank both.
+        # LIVE run against the offline stand-in (prepare.yml builds it), not the
+        # private GHCR image. Port aligned with the firewall rule below.
+        account_image_repo: localhost/account-standin
+        account_image_tag: test
+        account_port: 18766
+        nftables_extra_tcp_ports: [18766]
+        account_ghcr_user: test-bot
+        account_ghcr_token: ghp_testtoken
+        account_db_url: "postgresql://pm@db.example:5432/account?sslmode=verify-full&sslrootcert=/etc/pm/db-ca.crt"
+        account_voucher_seed: "1111111111111111111111111111111111111111111111111111111111111111"
+        account_anon_issuer_key: |
+          -----BEGIN PRIVATE KEY-----
+          TEST-NOT-A-REAL-KEY
+          -----END PRIVATE KEY-----
     group_vars:
       all:
         # Stage host-global actions instead of running them (containers).

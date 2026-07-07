@@ -3,12 +3,19 @@
   hosts: all
   become: true
   vars:
-    # Stage config only — the private GHCR image can't be pulled without creds in
-    # the sandbox, so we verify RENDERING (env/quadlet/authfile), not a live run.
-    account_deploy_run: false
-    # Minimal required config + dummy secrets (would come from group_vars/account +
-    # the vault on a real host).
-    account_image_tag: "v0.0.0-test"
+    # LIVE run against the offline stand-in image (prepare.yml built it) — the
+    # private GHCR image can't be pulled without creds, so we swap the image but
+    # exercise the real path: quadlet -> systemd -> podman -> /healthz gate.
+    # Pull=missing in the quadlet means the local image is used as-is (the
+    # rendered authfile is never contacted).
+    # Override repo/tag (not account_image directly) so the computed
+    # account_image path is still exercised — it resolves to the local stand-in.
+    account_image_repo: "localhost/account-standin"
+    account_image_tag: "test"
+    account_port: 18766
+    # Minimal required config + dummy secrets (would come from group_vars/account
+    # + the vault on a real host). The stand-in ignores them; the role's asserts
+    # and env/quadlet rendering still exercise them.
     account_ghcr_user: "test-bot"
     account_ghcr_token: "ghp_testtoken"
     account_db_url: "postgresql://pm@db.example:5432/account?sslmode=verify-full&sslrootcert=/etc/pm/db-ca.crt"
