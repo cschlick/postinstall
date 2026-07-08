@@ -15,6 +15,18 @@
     group: nats
     mode: "0750"
 
+# greasewood places the cert into nats_tls_dir but refuses to fabricate a deep
+# directory tree — and the nats-server package config is a bare file
+# (/etc/nats-server.conf), so /etc/nats doesn't exist. Create the tree (parents
+# included) before cert-request; nats reads its key/cert from here.
+- name: Ensure the TLS directory exists
+  ansible.builtin.file:
+    path: "{{ nats_tls_dir }}"
+    state: directory
+    owner: nats
+    group: nats
+    mode: "0750"
+
 # One-time issuance; the gw daemon then auto-renews at ~half-TTL and runs
 # `systemctl reload nats-server` itself. Idempotent, but `creates` skips the
 # call entirely once the cert exists (renewal is the daemon's job, not ours).
