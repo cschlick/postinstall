@@ -40,10 +40,16 @@ chat_body_store: "tiered:postmod-private"
 chat_moderation_url: "http://imagemod01.cranberrycat.net:8000"
 
 # --- cross-plane PUBLIC halves (from the account host's set-account-secrets.sh) --
-chat_voucher_pubkey: ""
+chat_voucher_pubkey: "0198ce178a5b2344ab1ed7ed574408156ef04bc4c6d7eefd857ae454ae0284c4"
 chat_anon_issuer_pub: |
   -----BEGIN PUBLIC KEY-----
-  ...paste the account host's anon-issuer PUBLIC pem...
+  MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAxaYiUey2Qs7IoHLXp83U
+  poYIVYZafdNTeGZNhLYP2VBZp+K3N0KHD+kXXFnCqr9H7fSLrYRE9q6jzmbC8tDq
+  PfJh+HGcWZUHgdRglahO5r5QcANYGSfzygL67q6tAt1GcYvvzXPRTevbSLgAtsM8
+  QJjuCK0Y/rT2SP/1yxtNclaBhyeTh06NTWGGnrfTqb0v+PDRWL2UeZAQFJdXyCIG
+  fXY5/TUGC5FWV14AlrisUibULV1uTVDRcmBzctlpz/+dfhOkDfXO7G1BBUtGvvHC
+  ASj5EVIWs7l33oVnIDDUElQ9AXHcSVMNDjKd+carQrV0z+YH6x7E13FPmSQnv6TW
+  RQIDAQAB
   -----END PUBLIC KEY-----
 
 # --- firewall: client-facing on :8765 ------------------------------------------
