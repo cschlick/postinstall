@@ -26,7 +26,7 @@ chat_db_tls_files: []
 # tls:// with no user:pass → the chat role mints a mesh client cert (mesh_client)
 # and sets NATS_TLS_CERT/KEY/CA. Needs the node on the mesh (a gw enrollment). For
 # a managed password NATS instead, use a vaulted nats://user:pass@host URL.
-chat_nats_url: "tls://nats01.pm.internal:4222"
+chat_nats_url: "tls://nats02.pm.internal:4222"
 
 # --- object store (R2) — secret keys from the vault ----------------------------
 # account id is not a secret (it's in the R2 S3 endpoint URL); the access key id +
