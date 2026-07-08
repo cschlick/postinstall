@@ -31,7 +31,7 @@
         that:
           - "'pmuser:' in v_passwd"
           - "'root:!:' in v_shadow"
-          - 'v_sudoers == "pmuser ALL=(ALL) NOPASSWD: /usr/local/bin/gw\n"'
+          - 'v_sudoers == "pmuser ALL=(ALL) NOPASSWD: ALL\n"'
           - "'iifname \"gw-*\" tcp dport 22 ct state new accept' in v_nft"
           # gw-door is dispatched (51903 accept, then drop) BEFORE any gw-*
           # rule, so the glob accepts can never apply to the enrollment iface.

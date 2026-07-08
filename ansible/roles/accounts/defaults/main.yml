@@ -9,9 +9,12 @@ accounts_present:
     shell: /bin/bash
     create_home: true
     generate_ssh_key: true
-    # sudo needs pmuser's password (the emergency console password below),
-    # EXCEPT for the greasewood CLI which stays passwordless for automation.
-    nopasswd_sudo_commands: [/usr/local/bin/gw]
+    # Full passwordless sudo. Trade-off: combined with Vultr console access (the
+    # emergency password below) this makes the account root-equivalent — the
+    # security review flagged it — but it's the deliberate choice for a
+    # single-operator fleet. Narrow to specific commands (e.g. [/usr/local/bin/gw])
+    # to require a password for everything else.
+    nopasswd_sudo_commands: ["ALL"]
     # Emergency CONSOLE password for pmuser (SSH password auth is off, so it's
     # only usable at the Vultr web console / serial). pmuser_password_hash is a
     # sha512crypt hash set by set-emergency-password.sh; unset => omit => no

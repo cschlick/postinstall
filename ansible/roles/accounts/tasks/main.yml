@@ -52,9 +52,8 @@
     label: "{{ item.name }}"
 
 # ── 3. Sudoers ──────────────────────────────────────────────────────────────
-# Passwordless sudo only for the specific commands listed per user
-# (nopasswd_sudo_commands); everything else prompts for the user's password.
-# Overwrites any previous blanket NOPASSWD: ALL grant at the same path.
+# Passwordless sudo for the commands listed per user (nopasswd_sudo_commands);
+# "ALL" grants it for everything, a command list narrows it (others then prompt).
 - name: Grant passwordless sudo for listed commands
   ansible.builtin.copy:
     content: "{{ item.name }} ALL=(ALL) NOPASSWD: {{ item.nopasswd_sudo_commands | join(', ') }}\n"

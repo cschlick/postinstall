@@ -42,9 +42,8 @@ private) creates instances via the Vultr API, records them, and renders an
 ansible hosts file where each host sits in its profile group(s) — the
 matching `group_vars/<profile>.yml` applies automatically. Point fleet.sh at
 it with `FLEET_INVENTORY`.
-Connections are plain SSH as **pmuser**: the control machine needs pmuser's
-private key, and runs need `-K` (sudo prompts for pmuser's password — the
-emergency console password; only `gw` is NOPASSWD). gw_nodes are listed by
+Connections are plain SSH as **pmuser** (passwordless sudo — no `-K` needed):
+the control machine just needs pmuser's private key. gw_nodes are listed by
 their mesh address and reached via the bastion (ProxyJump — see
 `group_vars/gw_node.yml`).
 
@@ -170,7 +169,7 @@ Applied in this order (see `site.yml`). Tag = role name. Run subsets with
 | Role | What it does |
 | --- | --- |
 | **hostname** | Sets the hostname (no-op unless `system_hostname` is set). |
-| **accounts** | Ensures pmuser exists (sudo with password — NOPASSWD only for `gw` — ed25519 keypair, emergency console password from `pmuser_password_hash`); fully purges `linuxuser`. |
+| **accounts** | Ensures pmuser exists (full passwordless sudo, ed25519 keypair, emergency console password from `pmuser_password_hash`); fully purges `linuxuser`. |
 | **system_upgrade** | One-off `apt upgrade --with-new-pkgs` catch-up. |
 | **ssh** | Hardened `sshd_config`: no root login, strong algos only, `PerSourcePenalties` brute-force throttle, `AllowUsers pmuser`, forwarding per host profile (ProxyJump on bastion, none elsewhere). Password auth off automatically once a key is present. |
 | **sysctl** | Network + kernel hardening (rp_filter, SYN cookies, `kptr_restrict`, ptrace scope, unprivileged-eBPF/userns off, kexec disabled, …). |
