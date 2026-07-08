@@ -1,0 +1,26 @@
+# {{ ansible_managed }}
+# Rendered by Ansible (role {{ ansible_role_name }}) — the postmodern mesh CLIENT
+# identity. pm-specific (owner {{ mesh_client_user }}, under {{ mesh_client_tls_dir }});
+# handed to `gw cert-request --profile <this path>`, so it never enters greasewood's
+# generic profile set. Generic file names (client.*) — reusable for DB / NATS / any
+# mesh client. Every mesh leaf cert carries clientAuth EKU, so it authenticates as a
+# client. No reload: consumers read the files fresh (the plane role restarts as needed).
+reload = ""
+
+[[file]]
+role  = "key"
+path  = "{{ mesh_client_tls_dir }}/client.key"
+owner = "{{ mesh_client_user }}:{{ mesh_client_group }}"
+mode  = "0640"
+
+[[file]]
+role  = "cert"
+path  = "{{ mesh_client_tls_dir }}/client.crt"
+owner = "{{ mesh_client_user }}:{{ mesh_client_group }}"
+mode  = "0644"
+
+[[file]]
+role  = "ca"
+path  = "{{ mesh_client_tls_dir }}/ca.crt"
+owner = "{{ mesh_client_user }}:{{ mesh_client_group }}"
+mode  = "0644"

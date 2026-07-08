@@ -1,0 +1,18 @@
+---
+# roles/mesh_client — a postmodern mesh CLIENT identity (client.key/crt + ca.crt)
+# issued by the mesh CA, for any pm workload that connects OUT over the mesh with
+# mutual TLS (the account plane's Postgres client today; the chat plane tomorrow).
+#
+# The pm-specifics (owner pm, these paths, the file names) live HERE and are
+# handed to gw as a rendered profile BY PATH — so greasewood's shipped profile
+# set stays generic and knows nothing about postmodern. Include this role from a
+# plane role (account_server/chat_server) when it needs a mesh client cert.
+mesh_client_tls_dir: /etc/pki/pm
+mesh_client_profile_path: /etc/greasewood/profiles/pm-client.toml
+
+# The identity is owned by pm (= the container uid/gid 10001), so a rootful
+# podman workload can read it through a read-only bind mount.
+mesh_client_user: pm
+mesh_client_group: pm
+mesh_client_uid: 10001
+mesh_client_gid: 10001

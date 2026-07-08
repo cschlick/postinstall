@@ -25,22 +25,27 @@ account_pull_always: true
 # --- GHCR pull (private package) — the matching token is in vault-account.yml ----------
 account_ghcr_user: "cschlick"         # the GitHub user/bot whose read:packages token this is
 
-# --- database: LOCAL (co-located postgres) or REMOTE --------------------------
-# EASIEST: co-locate the postgres profile on the SAME host and connect over the
-# local Unix socket — no DSN, no client certs, no secrets. Stack all three:
-#   pmdeploy create db01 --profile gw_node,postgres,account
-# and set:
-account_db_local: false               # true = local socket (the postgres role provisions the db+role)
+# --- database: three ways ------------------------------------------------------
+# 1) LOCAL (easiest) — co-locate the postgres profile on the SAME host, connect
+#    over the Unix socket. No DSN, no certs, no secrets:
+#      pmdeploy create db01 --profile gw_node,postgres,account --local-db
+account_db_local: false               # true = local socket (postgres role provisions the db+role)
 #
-# REMOTE (account_db_local: false) — point account_db_url at a mesh or managed DB:
-#   Managed DB → …?sslmode=verify-full&sslrootcert=/etc/pm/db-ca.crt
-#   Self-hosted mesh PG → the DB's gw-* address + client mTLS, and
-#     account_db_cert_manage: true (mint the client cert from the mesh CA here).
-account_db_url: ""                    # REQUIRED when NOT local, e.g. postgresql://pm@db.mesh:5432/account?sslmode=verify-full&sslrootcert=/etc/pm/db-ca.crt&sslcert=/etc/pm/db-client.crt&sslkey=/etc/pm/db-client.key
+# 2) REMOTE MESH Postgres — a separate DB box on the mesh. Set account_db_host to
+#    its mesh name; the account role mints a mesh CLIENT cert (mesh_client role)
+#    and builds the mTLS DSN automatically. The DB box must provision the db+role
+#    (postgres profile: postgres_databases). Via pmdeploy:
+#      pmdeploy create db01   --profile gw_node,postgres --gw-token <T> --provision-db account:pm
+#      pmdeploy create acct01 --profile dev,account --gw-token <T> --vault-pass <P> \
+#               --account-db-host db01.pm.internal
+account_db_host: ""                   # e.g. db01.pm.internal  (mesh mTLS, auto DSN)
+#
+# 3) MANAGED / other DB — a full DSN you supply, with certs via account_db_tls_files.
+account_db_url: ""                    # e.g. postgresql://pm@host:5432/account?sslmode=verify-full&sslrootcert=/etc/pm/db-ca.crt
 
-# TLS material the DSN references, installed read-only under /etc/pm. For a managed
-# DB this is usually just the provider CA; for mesh mTLS, the client cert+key too
-# (or set account_db_cert_manage: true to mint them from the mesh CA).
+# TLS material a hand-written account_db_url references, installed read-only under
+# /etc/pm (managed DBs — usually just the provider CA). The mesh path (2) does NOT
+# use this; mesh_client handles its cert.
 account_db_tls_files: []
 #   - { src: files/account/db-ca.crt,     dest: db-ca.crt }
 #   - { src: files/account/db-client.crt, dest: db-client.crt }

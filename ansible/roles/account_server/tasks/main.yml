@@ -12,8 +12,8 @@
     quiet: true
     that:
       - account_image_tag | length > 0
-      # a database: either the local co-located socket, or a remote DSN
-      - (account_db_local | bool) or (account_db_url | length > 0)
+      # a database: the local co-located socket, a remote mesh host, or a DSN
+      - (account_db_local | bool) or (account_db_host | length > 0) or (account_db_url | length > 0)
       - account_ghcr_user | length > 0
       - account_ghcr_token | default('') | length > 0
       - account_voucher_seed | default('') | length > 0
@@ -74,13 +74,14 @@
   no_log: true
 
 # --- DB TLS material -----------------------------------------------------------
-# Self-hosted-mesh-PG option: mint the DB CLIENT cert from the mesh CA on this host
-# (needs a matching greasewood 'account' profile). Off for a managed DB.
-- name: Request the DB client certificate from the mesh CA
-  ansible.builtin.command:
-    cmd: "gw cert-request --profile {{ account_db_cert_profile }}"
-    creates: "{{ account_db_cert_creates | default(account_secrets_dir + '/db-client.crt') }}"
-  when: account_db_cert_manage
+# Remote mesh Postgres: mint a mesh CLIENT identity (client.key/crt + ca.crt) via
+# the shared mesh_client role; the mTLS DSN (account_db_url_effective) points at
+# those files. The pm-client profile is postmodern-local, handed to gw by path,
+# so greasewood stays generic. Skipped for local (socket) and managed DBs.
+- name: Obtain the mesh client identity for the DB connection
+  ansible.builtin.include_role:
+    name: mesh_client
+  when: account_db_host | length > 0
 
 - name: Install DB/TLS files referenced by the DSN (read-only, uid 10001)
   ansible.builtin.copy:

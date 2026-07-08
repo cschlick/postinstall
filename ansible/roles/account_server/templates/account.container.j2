@@ -27,6 +27,11 @@ Volume={{ account_secrets_dir }}:{{ account_secrets_dir }}:ro
 # co-located cluster over the Unix socket (peer auth as pm — no TLS/password).
 Volume={{ account_db_socket_dir }}:{{ account_db_socket_dir }}:ro
 {% endif %}
+{% if account_db_host | length > 0 %}
+# Remote mesh DB: bind-mount the mesh client identity (client.*, ca.crt) that the
+# mTLS DSN references, so the container can present it to the mesh Postgres.
+Volume={{ mesh_client_tls_dir }}:{{ mesh_client_tls_dir }}:ro
+{% endif %}
 
 [Service]
 # Give podman the GHCR pull-secret (quadlet has no [Container] AuthFile key).

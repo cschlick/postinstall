@@ -97,7 +97,7 @@
   retries: 30
   delay: 2
   changed_when: false
-  when: account_db_local | default(false)
+  when: (account_db_local | default(false)) or (postgres_databases | length > 0)
 
 - name: Create the account login role
   ansible.builtin.command:
@@ -134,3 +134,48 @@
   when:
     - account_db_local | default(false)
     - pg_db_check.stdout | default('') != '1'
+
+# --- general provisioning for REMOTE consumers (postgres_databases) -----------
+# A mesh consumer (account/chat on another node) connects over mTLS as its login
+# role; that role + its database must exist here. Same idempotent shape as the
+# local block, generalized over the list. Roles are deduped so two databases can
+# share an owner without a double-CREATE.
+- name: Check which login roles already exist
+  ansible.builtin.command:
+    cmd: >-
+      psql -tAc "SELECT 1 FROM pg_roles WHERE rolname = '{{ item }}'"
+  become_user: postgres
+  register: pg_roles_check
+  changed_when: false
+  loop: "{{ postgres_databases | map(attribute='role') | unique | list }}"
+
+- name: Create missing login roles
+  ansible.builtin.command:
+    cmd: psql -c "CREATE ROLE {{ item.item }} LOGIN"
+  become_user: postgres
+  changed_when: true
+  when: item.stdout | default('') != '1'
+  loop: "{{ pg_roles_check.results | default([]) }}"
+  loop_control:
+    label: "{{ item.item }}"
+
+- name: Check which databases already exist
+  ansible.builtin.command:
+    cmd: >-
+      psql -tAc "SELECT 1 FROM pg_database WHERE datname = '{{ item.name }}'"
+  become_user: postgres
+  register: pg_dbs_check
+  changed_when: false
+  loop: "{{ postgres_databases }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: Create missing databases owned by their role
+  ansible.builtin.command:
+    cmd: createdb -O {{ item.item.role }} {{ item.item.name }}
+  become_user: postgres
+  changed_when: true
+  when: item.stdout | default('') != '1'
+  loop: "{{ pg_dbs_check.results | default([]) }}"
+  loop_control:
+    label: "{{ item.item.name }}"

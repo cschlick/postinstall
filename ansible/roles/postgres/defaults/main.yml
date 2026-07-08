@@ -23,6 +23,15 @@ postgres_tls_dir: "/var/lib/postgresql/{{ postgres_version }}/main"
 # their own certs at postgres_tls_dir.
 postgres_cert_manage: true
 
+# Databases to provision for REMOTE consumers (login role + owned database),
+# e.g. an account/chat server on another mesh node connecting over mTLS. General
+# mechanism — a list of {name, role}; add more as new planes need databases:
+#   postgres_databases:
+#     - { name: account, role: pm }
+# (The co-located account case is handled separately by account_db_local, which
+# provisions the same over the local socket.)
+postgres_databases: []
+
 # Socket-only mode: listen on the Unix socket ONLY — no TCP, no mesh address,
 # no TLS, no certs. For a single-host box where the only consumer is a
 # co-located app (e.g. account with account_db_local) reaching it over the

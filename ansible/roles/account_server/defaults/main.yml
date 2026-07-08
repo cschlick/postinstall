@@ -56,24 +56,36 @@ account_db_name: account                     # the database (local mode)
 account_db_role: pm                           # the login role = the pm uid, so peer auth maps straight through
 account_db_socket_dir: /run/postgresql        # Debian's postgres socket dir
 account_db_url: ""                            # REQUIRED when NOT local — a postgresql://… DSN
-# The effective DSN handed to the container: a socket DSN in local mode, else
-# the operator's account_db_url verbatim.
-account_db_url_effective: "{{ 'postgresql://' ~ account_db_role ~ '@/' ~ account_db_name ~ '?host=' ~ account_db_socket_dir if account_db_local else account_db_url }}"
+# REMOTE mesh Postgres: set account_db_host to a mesh hostname (e.g.
+# db01.pm.internal) served by the postgres profile. The role then mints a mesh
+# CLIENT cert (mesh_client role) and builds the mTLS DSN automatically — no
+# hand-written URL. The DB box must provision the account db+role (postgres
+# profile: postgres_databases). Needs the node on the mesh (a gw enrollment).
+account_db_host: ""
+account_db_port: 5432
+mesh_client_tls_dir: /etc/pki/pm              # where the mesh_client cert lands
+# The effective DSN handed to the container:
+#   local     -> Unix socket, peer auth (no TLS)
+#   mesh host -> mTLS DSN pointing at the mesh_client cert files
+#   otherwise -> the operator's account_db_url verbatim (a managed DB)
+account_db_url_effective: >-
+  {{ 'postgresql://' ~ account_db_role ~ '@/' ~ account_db_name ~ '?host=' ~ account_db_socket_dir
+     if account_db_local
+     else ('postgresql://' ~ account_db_role ~ '@' ~ account_db_host ~ ':' ~ (account_db_port | string) ~ '/' ~ account_db_name
+           ~ '?sslmode=verify-full&sslrootcert=' ~ mesh_client_tls_dir ~ '/ca.crt'
+           ~ '&sslcert=' ~ mesh_client_tls_dir ~ '/client.crt&sslkey=' ~ mesh_client_tls_dir ~ '/client.key'
+           if account_db_host | length > 0
+           else account_db_url) }}
 
-# TLS/cert files to install under {{ account_secrets_dir }} (read-only, uid 10001),
-# referenced by account_db_url / account_tls_*. Each: {src, dest, mode(dflt "0640")}.
-# `src` is a path on the control host (or use content:). Empty for a managed DB that
-# needs only a public CA you ship as one entry.
+# MANAGED-DB only: TLS/cert files to install under {{ account_secrets_dir }}
+# (read-only, uid 10001), referenced by a hand-written account_db_url. Each:
+# {src, dest, mode(dflt "0640")}. For a mesh host use account_db_host instead —
+# the mesh_client role handles the client cert. Empty for a managed DB that needs
+# only a public CA you ship as one entry.
 #   - { src: files/db-ca.crt,     dest: db-ca.crt }
 #   - { src: files/db-client.crt, dest: db-client.crt }
 #   - { src: files/db-client.key, dest: db-client.key, mode: "0600" }
 account_db_tls_files: []
-
-# Self-hosted-mesh-PG only: obtain the DB CLIENT cert from the mesh CA on this host
-# (mirrors the postgres role's server-cert issuance). Leave false for a managed DB or
-# when you place the client cert via account_db_tls_files.
-account_db_cert_manage: false
-account_db_cert_profile: account            # gw cert-request --profile <this>
 
 # --- optional on-wire TLS (terminate wss:// in-process; else front with a proxy) -
 account_tls_cert: ""                         # path under the container (a mounted file)

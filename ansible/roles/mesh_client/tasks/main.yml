@@ -1,0 +1,48 @@
+---
+# Idempotent: the pm identity may already exist (account_server creates the same
+# uid/gid); creating it here keeps the role self-contained for other planes.
+- name: Ensure the pm group (owns the mesh client identity; = container gid)
+  ansible.builtin.group:
+    name: "{{ mesh_client_group }}"
+    gid: "{{ mesh_client_gid }}"
+    system: true
+
+- name: Ensure the pm user (= container uid)
+  ansible.builtin.user:
+    name: "{{ mesh_client_user }}"
+    uid: "{{ mesh_client_uid }}"
+    group: "{{ mesh_client_group }}"
+    system: true
+    create_home: false
+    shell: /usr/sbin/nologin
+
+- name: Ensure the mesh client TLS directory
+  ansible.builtin.file:
+    path: "{{ mesh_client_tls_dir }}"
+    state: directory
+    owner: "{{ mesh_client_user }}"
+    group: "{{ mesh_client_group }}"
+    mode: "0750"
+
+- name: Ensure the greasewood host-local profiles directory
+  ansible.builtin.file:
+    path: "{{ mesh_client_profile_path | dirname }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Render the postmodern client-cert profile
+  ansible.builtin.template:
+    src: pm-client.toml.j2
+    dest: "{{ mesh_client_profile_path }}"
+    owner: root
+    group: root
+    mode: "0644"
+
+# Issued by the mesh CA (needs the overlay up — greasewood joins earlier in the
+# play). gw writes the three files to the profile's paths; the daemon auto-renews.
+- name: Request the mesh client certificate
+  ansible.builtin.command:
+    cmd: "gw cert-request --profile {{ mesh_client_profile_path }}"
+    creates: "{{ mesh_client_tls_dir }}/client.crt"
