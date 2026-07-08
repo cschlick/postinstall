@@ -27,9 +27,9 @@ Volume={{ chat_secrets_dir }}:{{ chat_secrets_dir }}:ro
 # co-located cluster over the Unix socket (peer auth as pm — no TLS/password).
 Volume={{ chat_db_socket_dir }}:{{ chat_db_socket_dir }}:ro
 {% endif %}
-{% if chat_db_host | length > 0 %}
-# Remote mesh DB: bind-mount the mesh client identity (client.*, ca.crt) that the
-# mTLS DSN references, so the container can present it to the mesh Postgres.
+{% if chat_db_host | length > 0 or chat_nats_url.startswith('tls://') %}
+# Mesh backbone (mTLS): bind-mount the mesh client identity (client.*, ca.crt) the
+# container presents to the mesh Postgres (DSN) and/or the mesh NATS (NATS_TLS_*).
 Volume={{ mesh_client_tls_dir }}:{{ mesh_client_tls_dir }}:ro
 {% endif %}
 

@@ -77,14 +77,15 @@
     mode: "0600"
   no_log: true
 
-# --- DB TLS material -----------------------------------------------------------
-# Remote mesh Postgres: mint a mesh CLIENT identity (client.key/crt + ca.crt) via
-# the shared mesh_client role; the mTLS DSN (chat_db_url_effective) points at those
-# files. Skipped for local (socket) and managed DBs.
-- name: Obtain the mesh client identity for the DB connection
+# --- mesh client identity (mTLS to mesh Postgres and/or mesh NATS) -------------
+# Mint a mesh CLIENT identity (client.key/crt + ca.crt) via the shared mesh_client
+# role when this box talks mTLS to a mesh backbone service: a remote mesh Postgres
+# (chat_db_host → the mTLS DSN), and/or the mesh NATS (tls:// URL, verify:true).
+# The same client cert serves both. Skipped for a fully local/managed backbone.
+- name: Obtain the mesh client identity for the backbone
   ansible.builtin.include_role:
     name: mesh_client
-  when: chat_db_host | length > 0
+  when: (chat_db_host | length > 0) or chat_nats_url.startswith('tls://')
 
 - name: Install DB/TLS files referenced by the DSN (read-only, uid 10001)
   ansible.builtin.copy:

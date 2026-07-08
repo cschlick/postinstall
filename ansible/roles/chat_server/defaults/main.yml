@@ -4,9 +4,11 @@
 # (NATS + object store) and that this plane holds only PUBLIC cross-plane keys.
 # Runtime contract: postmodern-server/CONTAINER.md.
 #
-# Secrets (chat_ghcr_token, chat_nats_password, chat_r2_access_key_id,
-# chat_r2_secret_access_key, chat_vc_issuer_seed, chat_bot_claim_secret) MUST come
-# from ansible/vault-chat.yml — never set them here. See group_vars/chat.yml.
+# Secrets (chat_ghcr_token, chat_r2_access_key_id, chat_r2_secret_access_key,
+# chat_vc_issuer_seed, chat_bot_claim_secret) MUST come from ansible/vault-chat.yml
+# — never set them here. See group_vars/chat.yml. (NATS is mesh mTLS by default —
+# a client cert, no password; a managed password NATS would embed creds in a
+# vaulted chat_nats_url.)
 
 # --- image ---------------------------------------------------------------------
 chat_image_repo: ghcr.io/postmodern-you/postmodern-server
@@ -60,8 +62,10 @@ chat_db_url_effective: >-
 chat_db_tls_files: []
 
 # --- NATS backbone (new vs account) --------------------------------------------
-# Full URL; may embed the vaulted {{ chat_nats_password }}. tls:// for TLS.
-chat_nats_url: ""                     # REQUIRED, e.g. nats://pm:{{ chat_nats_password }}@nats01.mesh:4222
+# REQUIRED. tls://<host>:4222 with NO user:pass → mesh mTLS (verify:true): the role
+# mints a mesh client cert (mesh_client) and sets NATS_TLS_CERT/KEY/CA. A managed
+# NATS with password auth uses a vaulted nats://user:pass@host URL instead.
+chat_nats_url: ""                     # e.g. tls://nats01.pm.internal:4222
 
 # --- object store (new vs account) ---------------------------------------------
 chat_object_store: r2                 # r2 | aws | minio | nats

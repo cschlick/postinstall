@@ -6,7 +6,8 @@
 # EASIEST: build it interactively with ./set-chat-secrets.sh (repo root).
 
 chat_ghcr_token: "ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"   # read:packages
-chat_nats_password: "CHANGE_ME_STRONG"                        # matches the NATS server user
+# NATS is mesh mTLS (client cert, no password) — nothing to put here. A managed
+# password NATS would instead be a full vaulted chat_nats_url.
 
 # object store (R2/S3) API credentials
 chat_r2_access_key_id: "..."

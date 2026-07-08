@@ -22,8 +22,11 @@ chat_db_host: ""          # e.g. db01.pm.internal (mesh mTLS, auto DSN)
 chat_db_url: ""           # a managed/other DB DSN
 chat_db_tls_files: []
 
-# --- NATS (password from the vault) --------------------------------------------
-chat_nats_url: "nats://pm:{{ chat_nats_password }}@nats01.pm.internal:4222"
+# --- NATS: mesh mTLS (verify:true, no password) --------------------------------
+# tls:// with no user:pass → the chat role mints a mesh client cert (mesh_client)
+# and sets NATS_TLS_CERT/KEY/CA. Needs the node on the mesh (a gw enrollment). For
+# a managed password NATS instead, use a vaulted nats://user:pass@host URL.
+chat_nats_url: "tls://nats01.pm.internal:4222"
 
 # --- object store (R2) — secret keys from the vault ----------------------------
 chat_object_store: r2
