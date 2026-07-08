@@ -3,6 +3,21 @@
 # same design as the nats role: possession of a mesh-CA client cert IS the
 # credential (pg_hba: hostssl + trust clientcert=verify-ca; no plain-TCP
 # path exists at all).
+# Fail early + clearly instead of dying deep in cert-request: the mesh server
+# cert needs a joined mesh (a gw-* interface). A non-mesh box (bastion/dev)
+# serving only a co-located account app should use socket-only mode.
+- name: Fail early if a mesh cert is needed but no mesh is present
+  ansible.builtin.assert:
+    quiet: true
+    that:
+      - postgres_socket_only or (not postgres_cert_manage) or
+        (ansible_facts.interfaces | select('match', '^gw-') | reject('equalto', 'gw-door') | list | length > 0)
+    fail_msg: >-
+      postgres wants a mesh CA cert but this host is on no mesh. For a local-only
+      DB (co-located account), redeploy with socket-only: pmdeploy --local-db
+      (or -e postgres_socket_only=true -e account_db_local=true). For a mesh DB,
+      enroll the node (gw join) before applying.
+
 - name: Install postgresql
   ansible.builtin.apt:
     name: postgresql

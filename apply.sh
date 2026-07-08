@@ -38,6 +38,10 @@ EXTRA=()
 # decrypt) it; apply loads it explicitly. Needs the vault password via
 # ANSIBLE_VAULT_PASSWORD_FILE. Guarded so a non-account run without it is fine.
 [ "${ACCOUNT:-0}" = 1 ] && [ -f "$ROOT/ansible/vault-account.yml" ] && EXTRA+=(-e @"$ROOT/ansible/vault-account.yml")
+# Deploy-time extra vars (pmdeploy --var / --local-db writes this). Lives outside
+# the repo so it survives ansible-pull's checkout reset. e.g. a local-DB box:
+#   postgres_socket_only: true  /  account_db_local: true
+[ -f /etc/postinstall/extra-vars.yml ] && EXTRA+=(-e @/etc/postinstall/extra-vars.yml)
 
 # Ensure galaxy collections are present (idempotent; fast when already installed).
 ansible-galaxy collection install -r "$ROOT/ansible/requirements.yml"
