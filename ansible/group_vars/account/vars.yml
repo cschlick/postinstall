@@ -21,7 +21,7 @@ account_image_tag: "latest"
 account_pull_always: true
 
 # --- GHCR pull (private package) — the matching token is in vault.yml ----------
-account_ghcr_user: ""                 # the GitHub user/bot whose read:packages token this is
+account_ghcr_user: "cschlick"         # the GitHub user/bot whose read:packages token this is
 
 # --- database: LOCAL (co-located postgres) or REMOTE --------------------------
 # EASIEST: co-locate the postgres profile on the SAME host and connect over the
