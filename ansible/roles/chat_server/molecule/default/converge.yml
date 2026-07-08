@@ -1,0 +1,36 @@
+---
+- name: Converge
+  hosts: all
+  become: true
+  vars:
+    # Render-only: the private GHCR image can't be pulled in CI, and the health
+    # gate needs a live NATS, so this scenario stages config WITHOUT enabling or
+    # starting the unit. It exercises the asserts + env/quadlet/authfile/pubkey
+    # rendering; the live quadlet->systemd->podman path is covered by the
+    # account_server scenario (identical code path).
+    chat_deploy_run: false
+    chat_image_repo: "localhost/chat-standin"
+    chat_image_tag: "test"
+    chat_port: 18765
+    # Minimal required config + dummy secrets (real values come from
+    # group_vars/chat + the vault). Non-dev-default where the asserts check.
+    chat_ghcr_user: "test-bot"
+    chat_ghcr_token: "ghp_testtoken"
+    chat_db_url: "postgresql://pm@db.example:5432/chat?sslmode=verify-full&sslrootcert=/etc/pm/db-ca.crt"
+    chat_nats_url: "nats://pm:testpass@nats.example:4222"
+    chat_object_store: r2
+    chat_r2_account_id: "acctid"
+    chat_r2_access_key_id: "test-key-id"
+    chat_r2_secret_access_key: "test-secret"
+    chat_avatar_bucket: "postmod-private"
+    chat_body_store: "tiered:postmod-private"
+    chat_voucher_pubkey: "1111111111111111111111111111111111111111111111111111111111111111"
+    chat_vc_issuer_seed: "2222222222222222222222222222222222222222222222222222222222222222"
+    chat_bot_claim_secret: "test-bot-claim"
+    chat_anon_issuer_pub: |
+      -----BEGIN PUBLIC KEY-----
+      TEST-NOT-A-REAL-KEY
+      -----END PUBLIC KEY-----
+    chat_welcome_bot: "chad"
+  roles:
+    - role: chat_server

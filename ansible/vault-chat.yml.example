@@ -1,0 +1,20 @@
+---
+# SECRETS for the chat profile. Copy to vault-chat.yml, fill, then:
+#   cd ansible && ansible-vault encrypt vault-chat.yml
+# vault-chat.yml is gitignored; loaded explicitly by apply.sh (CHAT=1) via
+# ANSIBLE_VAULT_PASSWORD_FILE. Once encrypted it may be committed: git add -f ansible/vault-chat.yml
+# EASIEST: build it interactively with ./set-chat-secrets.sh (repo root).
+
+chat_ghcr_token: "ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"   # read:packages
+chat_nats_password: "CHANGE_ME_STRONG"                        # matches the NATS server user
+
+# object store (R2/S3) API credentials
+chat_r2_access_key_id: "..."
+chat_r2_secret_access_key: "..."
+
+# chat-plane-only secrets (NOT shared with the account host)
+chat_vc_issuer_seed: "0000000000000000000000000000000000000000000000000000000000000000"  # 64 hex; generate: python3 -c "import secrets;print(secrets.token_hex(32))"
+chat_bot_claim_secret: "CHANGE_ME"                            # same value as the bot process + the account host
+
+# optional: image scanner API key (only if chat_moderation_url is set)
+# chat_moderation_api_key: "..."

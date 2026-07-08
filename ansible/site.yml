@@ -41,6 +41,11 @@
     - role: account_server
       when: account_server_enabled | default(false)
       tags: [account_server]
+    # chat profile only (group_vars/chat.yml; stacks like account). The chat plane
+    # runs as a GHCR container via a podman quadlet — backbone: NATS + Postgres + R2.
+    - role: chat_server
+      when: chat_server_enabled | default(false)
+      tags: [chat_server]
     - role: auditd
       tags: [auditd]
     - role: pwquality

@@ -1,0 +1,63 @@
+---
+- name: Verify
+  hosts: all
+  become: true
+  tasks:
+    - name: Stat the rendered artifacts
+      ansible.builtin.stat:
+        path: "{{ item }}"
+      register: verify_files
+      loop:
+        - /etc/containers/systemd/chat.container
+        - /etc/postmodern/chat.env
+        - /etc/containers/pm-ghcr-auth.json
+        - /etc/pm/anon-issuer-pub.pem
+
+    - name: Assert artifacts exist with the right modes
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          - verify_files.results[0].stat.exists                       # quadlet
+          - verify_files.results[1].stat.exists                       # env
+          - verify_files.results[1].stat.mode == '0600'              # env is root-only
+          - verify_files.results[2].stat.exists                       # authfile
+          - verify_files.results[2].stat.mode == '0600'              # authfile is root-only
+          - verify_files.results[3].stat.exists                       # anon PUBLIC key
+          - verify_files.results[3].stat.mode == '0644'              # public → 0644
+          - verify_files.results[3].stat.pw_name == 'pm'             # owned by uid 10001
+
+    - name: Read the quadlet + env for content checks
+      ansible.builtin.slurp:
+        src: "{{ item }}"
+      register: verify_content
+      loop:
+        - /etc/containers/systemd/chat.container
+        - /etc/postmodern/chat.env
+
+    - name: Assert the quadlet pins the image + host net + GHCR auth env
+      vars:
+        quadlet: "{{ verify_content.results[0].content | b64decode }}"
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          - "'Image=localhost/chat-standin:test' in quadlet"
+          - "'Network=host' in quadlet"
+          - "'\nAuthFile=' not in quadlet"
+          - "'Environment=REGISTRY_AUTH_FILE=/etc/containers/pm-ghcr-auth.json' in quadlet"
+
+    - name: Assert the env carries the backbone + PUBLIC keys, and NO private key
+      vars:
+        env: "{{ verify_content.results[1].content | b64decode }}"
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          - "'CHAT_ENV=production' in env"
+          - "'NATS_URL=nats://' in env"
+          - "'CHAT_DB_URL=postgresql://' in env"
+          - "'CHAT_R2_SECRET_ACCESS_KEY=test-secret' in env"
+          - "'CHAT_VOUCHER_PUBKEY=1111' in env"
+          - "'CHAT_ANON_ISSUER_PUB=/etc/pm/anon-issuer-pub.pem' in env"
+          - "'CHAT_VC_ISSUER_SEED=2222' in env"
+          # the chat plane must NOT carry the private minting keys
+          - "'VOUCHER_SEED=' not in env"
+          - "'ANON_ISSUER_KEY=' not in env"

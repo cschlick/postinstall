@@ -1,5 +1,6 @@
-# Operator-supplied secrets for the account profile. Copied from
-# vault.yml.example and encrypted with ansible-vault; gitignored so a PLAINTEXT
-# copy is never committed by accident. To commit the ENCRYPTED file on purpose:
-#   git add -f ansible/vault-account.yml
+# Operator-supplied secrets for the account/chat profiles. Copied from the
+# *.yml.example and encrypted with ansible-vault; gitignored so a PLAINTEXT copy
+# is never committed by accident. To commit the ENCRYPTED file on purpose:
+#   git add -f ansible/vault-account.yml   (or vault-chat.yml)
 ansible/vault-account.yml
+ansible/vault-chat.yml

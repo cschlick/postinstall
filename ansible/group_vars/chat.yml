@@ -1,0 +1,44 @@
+---
+# The chat service profile — STACKS on a base profile (usually gw_node + chat), or
+# locally CHAT=1 GW_NODE=1 bash apply.sh. Config, NO secrets (those live in
+# ansible/vault-chat.yml, loaded explicitly by apply.sh with the vault password).
+# Auto-loads for hosts in the `chat` group.
+chat_server_enabled: true
+
+chat_image_tag: "latest"
+chat_pull_always: true
+
+chat_ghcr_user: "cschlick"
+
+# --- database: three ways (chat uses its OWN db, separate from account) ---------
+# 1) LOCAL socket  — co-locate postgres, set chat_db_local: true (--local-db).
+# 2) REMOTE MESH   — set chat_db_host to a mesh Postgres name; the chat role mints
+#                    a mesh client cert (mesh_client) and builds the mTLS DSN.
+#                    Provision the chat db+role on the DB box (postgres profile:
+#                    postgres_databases / pmdeploy --provision-db chat:pm).
+# 3) MANAGED       — set chat_db_url to a full DSN, certs via chat_db_tls_files.
+chat_db_local: false
+chat_db_host: ""          # e.g. db01.pm.internal (mesh mTLS, auto DSN)
+chat_db_url: ""           # a managed/other DB DSN
+chat_db_tls_files: []
+
+# --- NATS (password from the vault) --------------------------------------------
+chat_nats_url: "nats://pm:{{ chat_nats_password }}@nats01.pm.internal:4222"
+
+# --- object store (R2) — secret keys from the vault ----------------------------
+chat_object_store: r2
+chat_r2_account_id: ""
+chat_avatar_bucket: "postmod-private"
+chat_body_store: "tiered:postmod-private"
+
+# --- cross-plane PUBLIC halves (from the account host's set-account-secrets.sh) --
+chat_voucher_pubkey: ""
+chat_anon_issuer_pub: |
+  -----BEGIN PUBLIC KEY-----
+  ...paste the account host's anon-issuer PUBLIC pem...
+  -----END PUBLIC KEY-----
+
+# --- firewall: client-facing on :8765 ------------------------------------------
+# NOTE: group_vars lists don't merge — a host also stacking nats/postgres must
+# list every port it needs in a host_vars override.
+nftables_extra_tcp_ports: [8765]

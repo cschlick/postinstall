@@ -19,6 +19,9 @@
 #   ACCOUNT=1 bash apply.sh  -> account service profile (stacks like nats): the
 #                               account plane as a GHCR container (podman quadlet),
 #                               remote Postgres. Needs the vault password (see below).
+#   CHAT=1 bash apply.sh     -> chat service profile (stacks like account): the chat
+#                               plane as a GHCR container (podman quadlet); backbone
+#                               NATS + Postgres + R2. Needs the vault password.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -38,6 +41,8 @@ EXTRA=()
 # decrypt) it; apply loads it explicitly. Needs the vault password via
 # ANSIBLE_VAULT_PASSWORD_FILE. Guarded so a non-account run without it is fine.
 [ "${ACCOUNT:-0}" = 1 ] && [ -f "$ROOT/ansible/vault-account.yml" ] && EXTRA+=(-e @"$ROOT/ansible/vault-account.yml")
+[ "${CHAT:-0}" = 1 ] && EXTRA+=(-e @"$ROOT/ansible/group_vars/chat.yml")
+[ "${CHAT:-0}" = 1 ] && [ -f "$ROOT/ansible/vault-chat.yml" ] && EXTRA+=(-e @"$ROOT/ansible/vault-chat.yml")
 # Deploy-time extra vars (pmdeploy --var / --local-db writes this). Lives outside
 # the repo so it survives ansible-pull's checkout reset. e.g. a local-DB box:
 #   postgres_socket_only: true  /  account_db_local: true

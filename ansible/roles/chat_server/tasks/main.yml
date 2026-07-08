@@ -1,0 +1,178 @@
+---
+# Deploy the chat plane as a pinned GHCR container via a podman quadlet.
+# Network=host, so the backbone (mesh/managed Postgres, NATS, R2) is reachable over
+# the host stack and :8765 is governed by the host nftables directly. Secrets come
+# from the vault (ansible/vault-chat.yml); this role never carries a secret value.
+
+# --- fail fast on missing required config / dev-default secrets ----------------
+- name: Assert required deploy config is set
+  ansible.builtin.assert:
+    quiet: true
+    that:
+      - chat_image_tag | length > 0
+      # a database: the local co-located socket, a remote mesh host, or a DSN
+      - (chat_db_local | bool) or (chat_db_host | length > 0) or (chat_db_url | length > 0)
+      - chat_nats_url | length > 0
+      - chat_ghcr_user | length > 0
+      - chat_ghcr_token | default('') | length > 0
+      - chat_voucher_pubkey | default('') | length > 0
+      - chat_voucher_pubkey | default('') != ('0' * 64)
+      - chat_anon_issuer_pub | default('') | length > 0
+      - chat_vc_issuer_seed | default('') | length > 0
+      - chat_vc_issuer_seed | default('') != ('0' * 64)
+      - chat_bot_claim_secret | default('') | length > 0
+      - (chat_object_store != 'r2') or (chat_r2_secret_access_key | default('') | length > 0)
+    fail_msg: >-
+      chat_server needs (from group_vars/chat + the vault): chat_image_tag, a database
+      (chat_db_local: true, chat_db_host, or chat_db_url), chat_nats_url,
+      chat_ghcr_user/token, a non-dev-default chat_voucher_pubkey and chat_vc_issuer_seed,
+      chat_anon_issuer_pub (PEM), chat_bot_claim_secret, and (when object store is r2)
+      chat_r2_secret_access_key.
+
+- name: Install podman (application-workload runtime)
+  ansible.builtin.apt:
+    name: podman
+    state: present
+    update_cache: true
+
+# The image runs as uid/gid 10001; rootful podman maps that to the host, so the
+# host needs a matching pm identity to OWN the bind-mounted secrets.
+- name: Create the pm group (matches the image gid)
+  ansible.builtin.group:
+    name: pm
+    gid: "{{ chat_gid }}"
+    system: true
+
+- name: Create the pm user (matches the image uid)
+  ansible.builtin.user:
+    name: pm
+    uid: "{{ chat_uid }}"
+    group: pm
+    system: true
+    create_home: false
+    shell: /usr/sbin/nologin
+
+- name: Ensure config + quadlet directories
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: "{{ item.owner | default('root') }}"
+    group: "{{ item.group | default('root') }}"
+    mode: "{{ item.mode }}"
+  loop:
+    - { path: /etc/postmodern, mode: "0755" }
+    - { path: /etc/containers, mode: "0755" }
+    - { path: /etc/containers/systemd, mode: "0755" }
+    - { path: "{{ chat_secrets_dir }}", mode: "0750", owner: root, group: pm }
+  loop_control:
+    label: "{{ item.path }}"
+
+# --- GHCR pull secret (the package is PRIVATE) ---------------------------------
+- name: Install the GHCR pull-secret authfile
+  ansible.builtin.template:
+    src: pm-ghcr-auth.json.j2
+    dest: "{{ chat_authfile }}"
+    owner: root
+    group: root
+    mode: "0600"
+  no_log: true
+
+# --- DB TLS material -----------------------------------------------------------
+# Remote mesh Postgres: mint a mesh CLIENT identity (client.key/crt + ca.crt) via
+# the shared mesh_client role; the mTLS DSN (chat_db_url_effective) points at those
+# files. Skipped for local (socket) and managed DBs.
+- name: Obtain the mesh client identity for the DB connection
+  ansible.builtin.include_role:
+    name: mesh_client
+  when: chat_db_host | length > 0
+
+- name: Install DB/TLS files referenced by the DSN (read-only, uid 10001)
+  ansible.builtin.copy:
+    src: "{{ item.src | default(omit) }}"
+    content: "{{ item.content | default(omit) }}"
+    dest: "{{ chat_secrets_dir }}/{{ item.dest }}"
+    owner: "{{ chat_uid }}"
+    group: "{{ chat_gid }}"
+    mode: "{{ item.mode | default('0640') }}"
+  loop: "{{ chat_db_tls_files }}"
+  loop_control:
+    label: "{{ item.dest }}"
+  no_log: true
+
+# The cross-plane anon-issuer PUBLIC key. Unlike the account plane (which holds the
+# PRIVATE key), chat only verifies — so this file is public (0644). Referenced by
+# CHAT_ANON_ISSUER_PUB (a path) so the PEM stays out of the env file.
+- name: Install the anon-issuer PUBLIC key
+  ansible.builtin.copy:
+    content: "{{ chat_anon_issuer_pub }}"
+    dest: "{{ chat_secrets_dir }}/anon-issuer-pub.pem"
+    owner: "{{ chat_uid }}"
+    group: "{{ chat_gid }}"
+    mode: "0644"
+
+# --- env + quadlet -------------------------------------------------------------
+- name: Render the chat server env file
+  ansible.builtin.template:
+    src: chat.env.j2
+    dest: "{{ chat_env_file }}"
+    owner: root
+    group: root
+    mode: "0600"          # read only by root (podman injects it into the container)
+  no_log: true
+  notify: Restart chat server
+
+- name: Install the chat.container quadlet
+  ansible.builtin.template:
+    src: chat.container.j2
+    dest: "{{ chat_quadlet }}"
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - Reload systemd
+    - Restart chat server
+
+# Quadlet generates chat.service from chat.container on daemon-reload; do it now
+# (before enable/start) so the unit exists on the first run.
+- name: Reload systemd so the quadlet generates chat.service
+  ansible.builtin.systemd_service:
+    daemon_reload: true
+
+# --- mutable-tag refresh: pull a newer image each apply, restart iff changed --
+- name: Record the current image id
+  ansible.builtin.command: "podman image inspect --format '{{ '{{' }}.Id{{ '}}' }}' {{ chat_image }}"
+  register: chat_img_before
+  changed_when: false
+  failed_when: false
+  when: chat_deploy_run and chat_pull_always
+
+- name: Pull the latest image
+  ansible.builtin.command: "podman pull {{ chat_image }}"
+  environment:
+    REGISTRY_AUTH_FILE: "{{ chat_authfile }}"
+  register: chat_pull
+  changed_when: chat_img_before.stdout | default('') not in chat_pull.stdout
+  notify: Restart chat server
+  when: chat_deploy_run and chat_pull_always
+
+# NB: do NOT `systemctl enable` a quadlet-generated unit — it's transient
+# (lives in /run/systemd/generator) and enable fails. The quadlet's [Install]
+# WantedBy is re-applied by the generator on every boot.
+- name: Start the chat server
+  ansible.builtin.systemd_service:
+    name: chat.service
+    state: started
+  when: chat_deploy_run
+
+# --- deploy gate ---------------------------------------------------------------
+# /healthz is 200 only once NATS is connected — NATS must be reachable at deploy time.
+- name: Wait for the chat server to become healthy
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ chat_port }}/healthz"
+    status_code: 200
+  register: chat_health
+  retries: "{{ chat_health_retries }}"
+  delay: "{{ chat_health_delay }}"
+  until: chat_health.status == 200
+  changed_when: false
+  when: chat_deploy_run

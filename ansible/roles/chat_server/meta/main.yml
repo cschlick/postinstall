@@ -1,0 +1,15 @@
+---
+galaxy_info:
+  role_name: chat_server
+  author: cschlick
+  description: >-
+    postmodern chat plane as a pinned GHCR container via a podman quadlet
+    (Network=host; backbone NATS + Postgres + object store; /healthz deploy gate).
+    Runtime contract: postmodern-server/CONTAINER.md.
+  license: MIT
+  min_ansible_version: "2.15"
+  platforms:
+    - name: Debian
+      versions:
+        - trixie
+dependencies: []

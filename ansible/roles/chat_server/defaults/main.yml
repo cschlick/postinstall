@@ -1,0 +1,93 @@
+---
+# roles/chat_server — run the postmodern chat plane as a pinned GHCR container via
+# a podman quadlet. Mirrors roles/account_server; the deltas are the wider backbone
+# (NATS + object store) and that this plane holds only PUBLIC cross-plane keys.
+# Runtime contract: postmodern-server/CONTAINER.md.
+#
+# Secrets (chat_ghcr_token, chat_nats_password, chat_r2_access_key_id,
+# chat_r2_secret_access_key, chat_vc_issuer_seed, chat_bot_claim_secret) MUST come
+# from ansible/vault-chat.yml — never set them here. See group_vars/chat.yml.
+
+# --- image ---------------------------------------------------------------------
+chat_image_repo: ghcr.io/postmodern-you/postmodern-server
+chat_image_tag: ""                    # REQUIRED (e.g. "v1.4.0" or "latest")
+chat_image: "{{ chat_image_repo }}:{{ chat_image_tag }}"
+chat_pull_always: false               # true for a mutable tag (:latest) — re-pull+restart iff digest moved
+
+# --- GHCR pull secret (PRIVATE package) ----------------------------------------
+chat_ghcr_registry: ghcr.io
+chat_ghcr_user: ""                    # GitHub user/bot the read:packages token belongs to
+chat_authfile: /etc/containers/pm-ghcr-auth.json
+
+# --- run user / paths ----------------------------------------------------------
+chat_uid: 10001
+chat_gid: 10001
+chat_env_file: /etc/postmodern/chat.env
+chat_secrets_dir: /etc/pm
+chat_quadlet: /etc/containers/systemd/chat.container
+
+# --- network / bind ------------------------------------------------------------
+chat_port: 8765                       # client-facing; open publicly in group_vars/chat.yml
+
+# --- required runtime config ---------------------------------------------------
+chat_env: production                  # turns on the server's boot guards
+
+# --- database: local (co-located) | remote mesh host | managed DSN -------------
+# Same three shapes as account_server:
+#   chat_db_local: true  -> co-located postgres over the Unix socket (peer auth)
+#   chat_db_host: <mesh> -> a remote mesh Postgres; mesh_client mints the client
+#                           cert and the mTLS DSN is built automatically
+#   chat_db_url: <dsn>   -> a managed/other DB (certs via chat_db_tls_files)
+chat_db_local: false
+chat_db_name: chat                    # chat uses its OWN db, separate from account (unlinkability)
+chat_db_role: pm
+chat_db_socket_dir: /run/postgresql
+chat_db_host: ""                      # e.g. db01.pm.internal (mesh mTLS, auto DSN)
+chat_db_port: 5432
+mesh_client_tls_dir: /etc/pki/pm      # where the mesh_client cert lands
+chat_db_url: ""                       # a managed/other DB DSN (when NOT local and NOT a mesh host)
+chat_db_url_effective: >-
+  {{ 'postgresql://' ~ chat_db_role ~ '@/' ~ chat_db_name ~ '?host=' ~ chat_db_socket_dir
+     if chat_db_local
+     else ('postgresql://' ~ chat_db_role ~ '@' ~ chat_db_host ~ ':' ~ (chat_db_port | string) ~ '/' ~ chat_db_name
+           ~ '?sslmode=verify-full&sslrootcert=' ~ mesh_client_tls_dir ~ '/ca.crt'
+           ~ '&sslcert=' ~ mesh_client_tls_dir ~ '/client.crt&sslkey=' ~ mesh_client_tls_dir ~ '/client.key'
+           if chat_db_host | length > 0
+           else chat_db_url) }}
+# MANAGED-DB only: TLS/cert files to install under {{ chat_secrets_dir }} referenced
+# by a hand-written chat_db_url. Each: {src|content, dest, mode(dflt "0640")}. For a
+# mesh host use chat_db_host instead (mesh_client handles the client cert).
+chat_db_tls_files: []
+
+# --- NATS backbone (new vs account) --------------------------------------------
+# Full URL; may embed the vaulted {{ chat_nats_password }}. tls:// for TLS.
+chat_nats_url: ""                     # REQUIRED, e.g. nats://pm:{{ chat_nats_password }}@nats01.mesh:4222
+
+# --- object store (new vs account) ---------------------------------------------
+chat_object_store: r2                 # r2 | aws | minio | nats
+chat_r2_account_id: ""                # when chat_object_store == r2
+chat_avatar_bucket: ""                # e.g. postmod-private
+chat_body_store: ""                   # e.g. tiered:postmod-private
+# chat_r2_access_key_id / chat_r2_secret_access_key come from the vault.
+
+# --- optional on-wire TLS (else front with a proxy) ----------------------------
+chat_tls_cert: ""
+chat_tls_key: ""
+
+# --- cross-plane trust: PUBLIC halves (safe to commit in group_vars) -----------
+chat_voucher_pubkey: ""               # 64 hex; from the account host's set-account-secrets.sh output
+chat_anon_issuer_pub: ""              # PUBLIC anon-issuer PEM (full text); written to a file, referenced by path
+# chat-only SECRETS from the vault: chat_vc_issuer_seed (64 hex), chat_bot_claim_secret
+
+# --- app knobs (postmodern-server/config.py for the full list) -----------------
+chat_log_level: INFO
+chat_system_mods: ""                  # comma list of system-mod handles
+chat_welcome_bot: ""                  # keep in sync with the account host
+chat_moderation_url: ""               # optional image scanner (api key from vault)
+
+# --- health gate ---------------------------------------------------------------
+chat_health_retries: 30
+chat_health_delay: 2
+
+# Stage config only (render, don't enable/start/health-check). Molecule sets false.
+chat_deploy_run: true
