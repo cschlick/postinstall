@@ -12,14 +12,30 @@
     cmd: python3 -m venv {{ greasewood_venv }}
     creates: "{{ greasewood_venv }}/bin/python"
 
-# --upgrade fetches the latest git HEAD and reinstalls if it has changed.
-# changed_when keys on pip's "Successfully installed" line so Ansible reports
-# a change only when an actual upgrade happened.
+# --force-reinstall always refetches the latest git HEAD (greasewood ships from
+# HEAD, not versioned releases, so --upgrade would miss same-version code
+# changes). The pip run therefore always executes; the CHANGED report is based
+# on the installed version before/after, so a re-apply of the same HEAD is a
+# no-op to Ansible (and stays idempotent).
+- name: Read installed greasewood version
+  ansible.builtin.command: "{{ greasewood_venv }}/bin/pip show greasewood"
+  register: greasewood_ver_before
+  changed_when: false
+  failed_when: false
+
 - name: Install/upgrade greasewood from GitLab
   ansible.builtin.command:
     cmd: "{{ greasewood_venv }}/bin/pip install --force-reinstall git+{{ greasewood_repo }}"
-  register: greasewood_pip
-  changed_when: "'Successfully installed' in greasewood_pip.stdout"
+  changed_when: false
+
+- name: Read greasewood version after install
+  ansible.builtin.command: "{{ greasewood_venv }}/bin/pip show greasewood"
+  register: greasewood_ver_after
+  changed_when: false
+
+- name: Report whether greasewood changed
+  ansible.builtin.command: /bin/true
+  changed_when: (greasewood_ver_before.stdout | default('')) != greasewood_ver_after.stdout
 
 - name: Symlink greasewood into PATH
   ansible.builtin.file:
