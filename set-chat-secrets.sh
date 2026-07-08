@@ -71,15 +71,21 @@ echo "(remember it; the same one is needed at apply time via ANSIBLE_VAULT_PASSW
 ansible-vault encrypt "$VAULT"
 git -C "$ROOT" add -f "$VAULT"
 
+# Only nag about the public halves if group_vars doesn't already have them.
+GV="$ROOT/ansible/group_vars/chat.yml"
+if grep -qE '^chat_voucher_pubkey:[[:space:]]*"[0-9a-f]{64}"' "$GV" 2>/dev/null; then
+  HALVES="── group_vars/chat.yml already has the cross-plane public halves ✓ ──"
+else
+  HALVES=$'── Still needed in group_vars/chat.yml (PUBLIC, from the ACCOUNT host) ──\nPaste what the account host'"'"'s set-account-secrets.sh printed:\n    chat_voucher_pubkey:  <CHAT_VOUCHER_PUBKEY>\n    chat_anon_issuer_pub: <the anon-issuer PUBLIC PEM>'
+fi
+
 cat <<EOF
 
 ── vault-chat.yml written, encrypted, and git-staged (add -f) ──────────────────
 Commit + push it (it is ciphertext, safe on the remotes):
     git -C "$ROOT" commit -m "chat: add encrypted vault" && git -C "$ROOT" push
 
-── Still needed in group_vars/chat.yml (PUBLIC config, from the ACCOUNT host) ──
-Paste the values the account host's set-account-secrets.sh printed:
-    chat_voucher_pubkey:  <CHAT_VOUCHER_PUBKEY>
-    chat_anon_issuer_pub: <the anon-issuer PUBLIC PEM>
-Also confirm chat_bot_claim_secret matches the bot process (and the account host).
+$HALVES
+NOTE: the generated chat_bot_claim_secret is now the source of truth — configure
+the bot process with the SAME value (view it later: ansible-vault view $VAULT).
 EOF
