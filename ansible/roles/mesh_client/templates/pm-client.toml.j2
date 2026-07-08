@@ -9,9 +9,11 @@ reload = ""
 
 [[file]]
 role  = "key"
+# 0600: the consumer runs AS pm (the owner), and libpq refuses a user-owned key
+# with any group/world access (0640 is only allowed for a root-owned key).
 path  = "{{ mesh_client_tls_dir }}/client.key"
 owner = "{{ mesh_client_user }}:{{ mesh_client_group }}"
-mode  = "0640"
+mode  = "0600"
 
 [[file]]
 role  = "cert"

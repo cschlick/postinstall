@@ -46,3 +46,13 @@
   ansible.builtin.command:
     cmd: "gw cert-request --profile {{ mesh_client_profile_path }}"
     creates: "{{ mesh_client_tls_dir }}/client.crt"
+
+# Enforce 0600 on the key even on a box issued before this was fixed: gw skips
+# re-issuance once the cert exists (creates:), so a stale 0640 key would persist.
+# libpq refuses a user-owned key with any group access.
+- name: Enforce client key permissions (libpq requires 0600 for a user-owned key)
+  ansible.builtin.file:
+    path: "{{ mesh_client_tls_dir }}/client.key"
+    owner: "{{ mesh_client_user }}"
+    group: "{{ mesh_client_group }}"
+    mode: "0600"
