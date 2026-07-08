@@ -95,13 +95,25 @@
   changed_when: true
 
 # Wait for the overlay to come up so a mesh service later in the play can reach
-# the anchor's control plane (cert-request). gw creates a gw-<name> interface.
-- name: Wait for a mesh interface to appear
+# the anchor's control plane (cert-request). gw join is ASYNC: enrollment writes
+# the config, then the daemon (via greasewood.path) establishes the tunnel — the
+# interface + first handshake can lag enrollment by a minute or two on first
+# boot. Block here (no failed_when: a timeout means the mesh genuinely never came
+# up, and a clear failure on THIS task beats a confusing downstream cert error).
+- name: Wait for the mesh overlay to come up
   ansible.builtin.command: "{{ greasewood_bin }} status"
   register: greasewood_joined
   until: greasewood_joined.rc == 0
-  retries: 20
-  delay: 3
+  retries: 36
+  delay: 5
   changed_when: false
-  failed_when: false
+  when: greasewood_join_token | default('') | length > 0
+
+# ansible_facts.interfaces was gathered at play START, before the join — so the
+# postgres mesh guard (and anything else reading interfaces) would otherwise act
+# on a stale pre-join snapshot with no gw-<name> interface. Refresh it now.
+- name: Refresh network facts now the mesh is up
+  ansible.builtin.setup:
+    gather_subset:
+      - network
   when: greasewood_join_token | default('') | length > 0
