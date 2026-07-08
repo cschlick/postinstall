@@ -4,36 +4,53 @@
 # installer is idempotent and updating: re-running it fetches the latest
 # stable and replaces ~/.local/bin/claude if newer. changed-ness is reported
 # by comparing the version before and after, so routine applies stay green.
-- name: Read installed Claude Code version
-  ansible.builtin.command: "/home/{{ claude_code_user }}/.local/bin/claude --version"
-  register: claude_code_pre
-  changed_when: false
-  failed_when: false
-  become_user: "{{ claude_code_user }}"
+#
+# BEST-EFFORT: Claude Code is a convenience, and it runs BEFORE the core
+# hardening roles (auditd, pam, root_password, …). Its install must never abort
+# the play and skip them — so the whole thing is wrapped in block/rescue. The
+# common failure is an IPv6-only host reaching the IPv4-only downloads.claude.ai
+# (and the Anthropic API is likewise IPv4 — a dev box that will actually USE
+# Claude Code should be deployed with public IPv4, not --ipv6-only).
+- name: Install Claude Code (best-effort — never blocks the rest of the apply)
+  block:
+    - name: Read installed Claude Code version
+      ansible.builtin.command: "/home/{{ claude_code_user }}/.local/bin/claude --version"
+      register: claude_code_pre
+      changed_when: false
+      failed_when: false
+      become_user: "{{ claude_code_user }}"
 
-- name: Install/update Claude Code (native installer)
-  ansible.builtin.shell: set -o pipefail; curl -fsSL https://claude.ai/install.sh | bash
-  args:
-    executable: /bin/bash
-  become_user: "{{ claude_code_user }}"
-  changed_when: false
+    - name: Install/update Claude Code (native installer)
+      ansible.builtin.shell: set -o pipefail; curl -fsSL https://claude.ai/install.sh | bash
+      args:
+        executable: /bin/bash
+      become_user: "{{ claude_code_user }}"
+      changed_when: false
 
-- name: Read Claude Code version after install
-  ansible.builtin.command: "/home/{{ claude_code_user }}/.local/bin/claude --version"
-  register: claude_code_post
-  changed_when: false
-  become_user: "{{ claude_code_user }}"
+    - name: Read Claude Code version after install
+      ansible.builtin.command: "/home/{{ claude_code_user }}/.local/bin/claude --version"
+      register: claude_code_post
+      changed_when: false
+      become_user: "{{ claude_code_user }}"
 
-- name: Report whether Claude Code was installed or updated
-  ansible.builtin.command: /bin/true
-  changed_when: (claude_code_pre.stdout | default('')) != claude_code_post.stdout
+    - name: Report whether Claude Code was installed or updated
+      ansible.builtin.command: /bin/true
+      changed_when: (claude_code_pre.stdout | default('')) != claude_code_post.stdout
 
-# The installer puts the binary in ~/.local/bin (on pmuser's PATH via
-# ~/.profile); a system-wide symlink makes it reachable from any context.
-- name: Symlink claude into PATH
-  ansible.builtin.file:
-    src: "/home/{{ claude_code_user }}/.local/bin/claude"
-    dest: /usr/local/bin/claude
-    state: link
-    owner: root
-    group: root
+    # The installer puts the binary in ~/.local/bin (on pmuser's PATH via
+    # ~/.profile); a system-wide symlink makes it reachable from any context.
+    - name: Symlink claude into PATH
+      ansible.builtin.file:
+        src: "/home/{{ claude_code_user }}/.local/bin/claude"
+        dest: /usr/local/bin/claude
+        state: link
+        owner: root
+        group: root
+  rescue:
+    - name: Warn that Claude Code did not install (continuing)
+      ansible.builtin.debug:
+        msg: >-
+          Claude Code did not install — continuing with the rest of the apply.
+          Most often the host is IPv6-only and downloads.claude.ai is IPv4-only;
+          deploy the dev box with public IPv4 (not --ipv6-only) if you want it.
+          Install later with:  curl -fsSL https://claude.ai/install.sh | bash
