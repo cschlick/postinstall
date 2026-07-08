@@ -33,7 +33,11 @@ EXTRA=()
 # The account profile carries secrets in an ansible-vault file (group_vars/account/
 # vault.yml). Provide the vault password via ANSIBLE_VAULT_PASSWORD_FILE (ansible-pull
 # auto-uses it). vars.yml is committed; vault.yml is operator-placed + gitignored.
-[ "${ACCOUNT:-0}" = 1 ] && EXTRA+=(-e @"$ROOT/ansible/group_vars/account/vars.yml" -e @"$ROOT/ansible/group_vars/account/vault.yml")
+[ "${ACCOUNT:-0}" = 1 ] && EXTRA+=(-e @"$ROOT/ansible/group_vars/account/vars.yml")
+# The vault lives OUTSIDE group_vars so molecule/CI never auto-load (and try to
+# decrypt) it; apply loads it explicitly. Needs the vault password via
+# ANSIBLE_VAULT_PASSWORD_FILE. Guarded so a non-account run without it is fine.
+[ "${ACCOUNT:-0}" = 1 ] && [ -f "$ROOT/ansible/vault-account.yml" ] && EXTRA+=(-e @"$ROOT/ansible/vault-account.yml")
 
 # Ensure galaxy collections are present (idempotent; fast when already installed).
 ansible-galaxy collection install -r "$ROOT/ansible/requirements.yml"

@@ -1,13 +1,13 @@
 ---
-# SECRETS for the account profile. Copy to vault.yml and ENCRYPT it:
+# SECRETS for the account profile. Copy to vault-account.yml and ENCRYPT it:
 #
 #   cd ansible
-#   cp group_vars/account/vault.yml.example group_vars/account/vault.yml
+#   cp ansible/vault-account.yml.example ansible/vault-account.yml
 #   # fill in the real values, then:
-#   ansible-vault encrypt group_vars/account/vault.yml
+#   ansible-vault encrypt ansible/vault-account.yml
 #
-# vault.yml is gitignored (so a plaintext copy is never committed by accident).
-# Once encrypted it is safe to commit if you choose: git add -f group_vars/account/vault.yml
+# vault-account.yml is gitignored (so a plaintext copy is never committed by accident).
+# Once encrypted it is safe to commit if you choose: git add -f ansible/vault-account.yml
 #
 # Provide the vault password at apply time via either:
 #   export ANSIBLE_VAULT_PASSWORD_FILE=~/.pm-vault-pass   # ansible/ansible-pull auto-use it

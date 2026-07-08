@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# Interactively assemble ansible/group_vars/account/vault.yml — the encrypted
-# secrets for the account profile: the GHCR read:packages token and the two
-# PRIVATE minting keys (ed25519 voucher seed + blind-RSA anon-issuer key).
+# Interactively assemble ansible/vault-account.yml — the encrypted secrets for
+# the account profile: the GHCR read:packages token and the two PRIVATE minting
+# keys (ed25519 voucher seed + blind-RSA anon-issuer key). It lives OUTSIDE
+# group_vars so molecule/CI never auto-load it; apply.sh loads it explicitly.
 #
 # Run this on a TRUSTED machine. Secrets are typed with hidden input or
 # generated locally; nothing is echoed. The file is ansible-vault ENCRYPTED
@@ -12,7 +13,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-VAULT="$ROOT/ansible/group_vars/account/vault.yml"
+VAULT="$ROOT/ansible/vault-account.yml"
 
 for bin in openssl ansible-vault python3; do
   command -v "$bin" >/dev/null 2>&1 || { echo "$bin is required." >&2; exit 1; }

@@ -7,9 +7,11 @@
 #
 # Runs the postmodern account plane (roles/account_server) as a pinned GHCR
 # container via a podman quadlet. Backend is a REMOTE Postgres (mesh or managed) —
-# never the local socket. SECRETS live in the sibling vault.yml (ansible-vault):
-# account_ghcr_token, account_voucher_seed, account_anon_issuer_key. Both files
-# auto-load for hosts in the `account` group.
+# never the local socket. This file (config, no secrets) auto-loads for hosts
+# in the `account` group. SECRETS live in ansible/vault-account.yml (ansible-
+# vault; account_ghcr_token, account_voucher_seed, account_anon_issuer_key) —
+# OUTSIDE group_vars so molecule/CI never auto-load it; apply.sh loads it
+# explicitly with the vault password (ANSIBLE_VAULT_PASSWORD_FILE).
 
 account_server_enabled: true
 
@@ -20,7 +22,7 @@ account_server_enabled: true
 account_image_tag: "latest"
 account_pull_always: true
 
-# --- GHCR pull (private package) — the matching token is in vault.yml ----------
+# --- GHCR pull (private package) — the matching token is in vault-account.yml ----------
 account_ghcr_user: "cschlick"         # the GitHub user/bot whose read:packages token this is
 
 # --- database: LOCAL (co-located postgres) or REMOTE --------------------------
@@ -54,7 +56,7 @@ nftables_extra_tcp_ports: [8766]
 
 # --- billing (Paddle) — optional; leave price id blank to keep billing OFF -------
 # When set, the account plane exposes checkout/portal + a webhook receiver. Secrets
-# (account_paddle_api_key, account_paddle_webhook_secret) go in the sibling vault.yml.
+# (account_paddle_api_key, account_paddle_webhook_secret) go in ansible/vault-account.yml.
 # account_paddle_price_id: "pri_..."
 # account_paddle_api_base: "https://api.paddle.com"      # sandbox is the default
 # account_paddle_success_url: "https://app.example/paid"
