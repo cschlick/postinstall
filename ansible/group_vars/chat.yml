@@ -29,10 +29,15 @@ chat_db_tls_files: []
 chat_nats_url: "tls://nats01.pm.internal:4222"
 
 # --- object store (R2) — secret keys from the vault ----------------------------
+# account id is not a secret (it's in the R2 S3 endpoint URL); the access key id +
+# secret live in vault-chat.yml.
 chat_object_store: r2
-chat_r2_account_id: ""
+chat_r2_account_id: "bfb3a30b478b128cb81aba66dcba6ce3"
 chat_avatar_bucket: "postmod-private"
 chat_body_store: "tiered:postmod-private"
+
+# --- moderation (optional image scanner) — api key from the vault --------------
+chat_moderation_url: "http://imagemod01.cranberrycat.net:8000"
 
 # --- cross-plane PUBLIC halves (from the account host's set-account-secrets.sh) --
 chat_voucher_pubkey: ""

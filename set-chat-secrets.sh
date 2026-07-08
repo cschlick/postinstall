@@ -27,13 +27,23 @@ if [ -e "$VAULT" ]; then
   [ "$ans" = y ] || { echo "Aborted."; exit 1; }
 fi
 
+# Secrets already exported in the environment (e.g. `source ~/.bashrc`) are
+# picked up silently; anything not in the env is prompted for with hidden input.
+env_or_prompt() {  # <varname-to-set> <env-var> <prompt>
+  local cur="${!2:-}"
+  if [ -n "$cur" ]; then printf -v "$1" '%s' "$cur";
+  else read -rsp "$3" "$1"; echo; fi
+}
+
 # --- 1. GHCR token (read:packages) --------------------------------------------
-read -rsp "GHCR read:packages token (github PAT, hidden): " GHCR_TOKEN; echo
+env_or_prompt GHCR_TOKEN CHAT_GHCR_TOKEN "GHCR read:packages token (github PAT, hidden): "
 [ -n "$GHCR_TOKEN" ] || { echo "Empty token — aborting." >&2; exit 1; }
 
-# --- 2. R2 / object-store credentials -----------------------------------------
-read -rsp "R2 access key id (hidden): " R2_KEY_ID; echo
-read -rsp "R2 secret access key (hidden): " R2_SECRET; echo
+# --- 2. R2 / object-store credentials (from CHAT_R2_* env, else prompt) --------
+env_or_prompt R2_KEY_ID CHAT_R2_ACCESS_KEY_ID   "R2 access key id (hidden): "
+env_or_prompt R2_SECRET CHAT_R2_SECRET_ACCESS_KEY "R2 secret access key (hidden): "
+# Optional image-scanner API key — only vaulted if present (env or prompt-empty).
+MOD_KEY="${CHAT_MODERATION_API_KEY:-}"
 
 # --- 3. chat plane's own secrets (generate if blank) --------------------------
 read -rsp "chat_vc_issuer_seed (64 hex) — ENTER to generate: " VC_SEED; echo
@@ -51,8 +61,9 @@ umask 077
   echo "chat_r2_secret_access_key: \"$R2_SECRET\""
   echo "chat_vc_issuer_seed: \"$VC_SEED\""
   echo "chat_bot_claim_secret: \"$BOT_SECRET\""
+  [ -n "$MOD_KEY" ] && echo "chat_moderation_api_key: \"$MOD_KEY\""
 } > "$VAULT"
-unset GHCR_TOKEN R2_KEY_ID R2_SECRET VC_SEED BOT_SECRET
+unset GHCR_TOKEN R2_KEY_ID R2_SECRET VC_SEED BOT_SECRET MOD_KEY
 
 echo
 echo "Encrypting $VAULT — you'll be prompted for a vault password"
