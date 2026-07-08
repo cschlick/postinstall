@@ -16,7 +16,7 @@
   ansible.builtin.command:
     cmd: gw cert-request --profile postgres
     creates: "{{ postgres_tls_dir }}/server.crt"
-  when: postgres_cert_manage
+  when: postgres_cert_manage and not postgres_socket_only
 
 # Postgres refuses a key it can't own-and-protect. gw places these correctly
 # on real hosts; normalizing here also covers test-provisioned certs.
@@ -32,6 +32,7 @@
     - {name: root.crt, mode: "0644"}
   loop_control:
     label: "{{ item.name }}"
+  when: not postgres_socket_only
 
 # Debian's postgresql.conf includes conf.d — the package's stock config stays
 # untouched. The package postinst starts the cluster with that stock config

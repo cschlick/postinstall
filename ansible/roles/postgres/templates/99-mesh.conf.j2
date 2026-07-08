@@ -1,4 +1,9 @@
 # {{ ansible_managed }}
+{% if postgres_socket_only %}
+# Socket-only: no TCP listener at all — reachable ONLY over the Unix socket by
+# co-located consumers (peer auth). No mesh address, no TLS.
+listen_addresses = ''
+{% else %}
 # Mesh overlay only — not reachable off the mesh WireGuard interface.
 listen_addresses = '{{ postgres_listen_addr }}'
 port = {{ postgres_port }}
@@ -8,3 +13,4 @@ ssl = on
 ssl_cert_file = '{{ postgres_tls_dir }}/server.crt'
 ssl_key_file = '{{ postgres_tls_dir }}/server.key'
 ssl_ca_file = '{{ postgres_tls_dir }}/root.crt'
+{% endif %}

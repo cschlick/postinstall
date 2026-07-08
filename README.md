@@ -122,6 +122,10 @@ account container reaches the co-located postgres over the **Unix socket** with
 peer auth as the `pm` user — no DSN, no client certs, no password, never on the
 wire (the postgres role provisions the `account` db + `pm` role). Otherwise
 (`account_db_local: false`) set `account_db_url` to a remote mesh/managed DB.
+For a box whose *only* postgres consumer is the local account app, also set
+`postgres_socket_only: true` — postgres then binds the Unix socket only (no
+TCP, no mesh, no certs), so the box needs no mesh and can stack on a **bastion**
+or **dev** base: `--profile bastion,postgres,account`.
 
 ## SSH keys
 

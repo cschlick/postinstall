@@ -22,3 +22,10 @@ postgres_tls_dir: "/var/lib/postgresql/{{ postgres_version }}/main"
 # postgres reloads its certs on SIGHUP). Tests set this false and pre-place
 # their own certs at postgres_tls_dir.
 postgres_cert_manage: true
+
+# Socket-only mode: listen on the Unix socket ONLY — no TCP, no mesh address,
+# no TLS, no certs. For a single-host box where the only consumer is a
+# co-located app (e.g. account with account_db_local) reaching it over the
+# socket with peer auth. Needs no mesh, so an account box can stack on a
+# non-mesh base (bastion/dev). Overrides the mesh/TLS config below.
+postgres_socket_only: false

@@ -315,6 +315,23 @@
       changed_when: false
       failed_when: verify_local_db.stdout != "1"
 
+    # Socket-only: the cluster binds no TCP at all (netns-independent proof —
+    # under host-net all containers share a netns, so `ss` would see the other
+    # postgres hosts; the rendered config is unambiguous).
+    - name: Read the postgres config drop-in
+      ansible.builtin.slurp:
+        src: /etc/postgresql/17/main/conf.d/99-mesh.conf
+      register: verify_pg_socketonly
+
+    - name: Assert postgres is socket-only (listen_addresses empty, no ssl)
+      vars:
+        conf: "{{ verify_pg_socketonly.content | b64decode }}"
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          - "\"listen_addresses = ''\" in conf"
+          - "'ssl = on' not in conf"
+
     # --- EXTERNAL reachability: hit /healthz from a DIFFERENT container. Under
     # bridge networking (CI) this crosses network namespaces — a real external
     # client reaching the host-net-bound container port.

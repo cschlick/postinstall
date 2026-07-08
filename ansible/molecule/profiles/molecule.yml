@@ -137,14 +137,12 @@ provisioner:
         nftables_extra_tcp_ports: [18766]
         account_ghcr_user: test-bot
         account_ghcr_token: ghp_testtoken
-        # LOCAL database: co-located postgres over the Unix socket (peer auth),
-        # no remote DSN. The postgres role provisions the pm role + account db.
+        # LOCAL database: co-located SOCKET-ONLY postgres (no TCP, no mesh, no
+        # certs) reached over the Unix socket with peer auth. This is the
+        # account-with-local-db shape a bastion/dev box uses — the postgres role
+        # provisions the pm role + account db and binds only the socket.
         account_db_local: true
-        # Distinct postgres TCP port from profiles-postgres so the two servers
-        # don't collide under host-net mode (shared loopback in the sandbox; in
-        # CI's bridge mode they have separate IPs). Irrelevant to the account
-        # app, which reaches this cluster over the Unix socket.
-        postgres_port: 15433
+        postgres_socket_only: true
         account_voucher_seed: "1111111111111111111111111111111111111111111111111111111111111111"
         account_anon_issuer_key: |
           -----BEGIN PRIVATE KEY-----
