@@ -13,3 +13,13 @@ postgres_enabled: true
 # host stacking BOTH nats and postgres needs a host_vars override listing
 # every mesh port, e.g. nftables_mesh_tcp_ports: [4222, 8222, 5432].
 nftables_mesh_tcp_ports: [5432]
+
+# The postmodern plane databases a DB box provisions for REMOTE mesh consumers
+# (each: a login role + an owned, separate database — unlinkability, so account
+# and chat never share a db). The shared pm role owns both; a plane connects as
+# pm over mTLS. Idempotent — existing dbs/roles are left alone. Override in
+# host_vars for a box serving a different set. (A CO-LOCATED plane using
+# account_db_local/chat_db_local provisions its own over the local socket.)
+postgres_databases:
+  - { name: account, role: pm }
+  - { name: chat, role: pm }
