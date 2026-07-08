@@ -23,7 +23,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        role: [accounts, nats, postgres, account_server]
+        role: [accounts, greasewood, nats, postgres, account_server]
     steps:
       - uses: actions/checkout@v4
       - run: pip install ansible molecule "molecule-plugins[docker]"

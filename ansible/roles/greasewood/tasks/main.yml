@@ -58,3 +58,34 @@
   ansible.builtin.systemd_service:
     name: greasewood.service
     enabled: true
+
+# Join the mesh HERE — in the playbook, before any mesh service (postgres's
+# cert-request, etc.) runs later in site.yml. That's why the enrollment token
+# flows as an ansible var (greasewood_join_token, set by pmdeploy --gw-token)
+# rather than a post-apply step: gw is installed just above, so a single apply
+# does install -> join -> mesh-service in the right order.
+- name: Check whether this node is already on the mesh
+  ansible.builtin.command: "{{ greasewood_bin }} status"
+  register: greasewood_status
+  changed_when: false
+  failed_when: false
+  when: greasewood_join_token | default('') | length > 0
+
+- name: Join the mesh with the enrollment token
+  ansible.builtin.command: "{{ greasewood_bin }} join {{ greasewood_join_token }}"
+  when:
+    - greasewood_join_token | default('') | length > 0
+    - greasewood_status.rc | default(1) != 0
+  changed_when: true
+
+# Wait for the overlay to come up so a mesh service later in the play can reach
+# the anchor's control plane (cert-request). gw creates a gw-<name> interface.
+- name: Wait for a mesh interface to appear
+  ansible.builtin.command: "{{ greasewood_bin }} status"
+  register: greasewood_joined
+  until: greasewood_joined.rc == 0
+  retries: 20
+  delay: 3
+  changed_when: false
+  failed_when: false
+  when: greasewood_join_token | default('') | length > 0

@@ -1,0 +1,14 @@
+---
+# The role installs its apt deps with update_cache: false and relies on earlier
+# roles (packages installs git; system_upgrade refreshes the cache) in a full
+# apply. The standalone scenario has neither, and the base image ships no apt
+# lists — so refresh the cache and install git (pip needs it for git+https).
+- name: Prepare
+  hosts: all
+  become: true
+  tasks:
+    - name: Refresh apt cache and install git
+      ansible.builtin.apt:
+        name: git
+        state: present
+        update_cache: true
