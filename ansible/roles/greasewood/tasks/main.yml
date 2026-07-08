@@ -80,9 +80,15 @@
 # flows as an ansible var (greasewood_join_token, set by pmdeploy --gw-token)
 # rather than a post-apply step: gw is installed just above, so a single apply
 # does install -> join -> mesh-service in the right order.
+# Readiness is the presence of the overlay interface (gw-<name>, e.g. gw-pm),
+# NOT any gw subcommand — the daemon brings that interface up when the tunnel is
+# established. gw-door (the enrollment interface) doesn't count. This is the same
+# signal the postgres mesh guard uses, so the two agree.
 - name: Check whether this node is already on the mesh
-  ansible.builtin.command: "{{ greasewood_bin }} status"
-  register: greasewood_status
+  ansible.builtin.shell:
+    cmd: ip -o link show | grep -oE 'gw-[A-Za-z0-9_-]+' | grep -qvx gw-door
+    executable: /bin/bash
+  register: greasewood_iface
   changed_when: false
   failed_when: false
   when: greasewood_join_token | default('') | length > 0
@@ -91,19 +97,21 @@
   ansible.builtin.command: "{{ greasewood_bin }} join {{ greasewood_join_token }}"
   when:
     - greasewood_join_token | default('') | length > 0
-    - greasewood_status.rc | default(1) != 0
+    - greasewood_iface.rc | default(1) != 0
   changed_when: true
 
 # Wait for the overlay to come up so a mesh service later in the play can reach
 # the anchor's control plane (cert-request). gw join is ASYNC: enrollment writes
 # the config, then the daemon (via greasewood.path) establishes the tunnel — the
-# interface + first handshake can lag enrollment by a minute or two on first
-# boot. Block here (no failed_when: a timeout means the mesh genuinely never came
-# up, and a clear failure on THIS task beats a confusing downstream cert error).
-- name: Wait for the mesh overlay to come up
-  ansible.builtin.command: "{{ greasewood_bin }} status"
-  register: greasewood_joined
-  until: greasewood_joined.rc == 0
+# interface can lag enrollment by a minute or two on first boot. Block here (no
+# failed_when: a timeout means the mesh genuinely never came up, and a clear
+# failure on THIS task beats a confusing downstream cert error).
+- name: Wait for the mesh overlay interface to come up
+  ansible.builtin.shell:
+    cmd: ip -o link show | grep -oE 'gw-[A-Za-z0-9_-]+' | grep -qvx gw-door
+    executable: /bin/bash
+  register: greasewood_up
+  until: greasewood_up.rc == 0
   retries: 36
   delay: 5
   changed_when: false

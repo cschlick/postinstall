@@ -26,11 +26,18 @@
 
 # One-time issuance; the gw daemon then auto-renews at ~half-TTL and reloads
 # postgres itself (certs reload on SIGHUP). Needs the anchor's control plane
-# (51902) reachable over the mesh.
+# (51902) reachable over the mesh. Retry a few times: right after the overlay
+# interface appears the handshake/route to the anchor can still be settling, so
+# the first request may fail before the tunnel is fully usable. `creates` short-
+# circuits once the cert exists, so a re-apply is a no-op.
 - name: Request the server certificate from the mesh CA
   ansible.builtin.command:
     cmd: gw cert-request --profile postgres
     creates: "{{ postgres_tls_dir }}/server.crt"
+  register: pg_cert_request
+  until: pg_cert_request is succeeded
+  retries: 12
+  delay: 5
   when: postgres_cert_manage and not postgres_socket_only
 
 # Postgres refuses a key it can't own-and-protect. gw places these correctly
