@@ -23,5 +23,5 @@ Environment=REGISTRY_AUTH_FILE={{ seed_authfile }}
 # `Type=oneshot` here and re-verify `systemctl start pm-seed`.
 Restart=no
 TimeoutStartSec=1800
-# Deliberately NO [Install] section → pm-seed.service is not wired to a target and
-# never starts on boot. It is triggered explicitly by the operator.
+# One-shot: no boot-wiring section here, so pm-seed.service is not tied to any
+# target and never starts on boot — the operator triggers it explicitly.
