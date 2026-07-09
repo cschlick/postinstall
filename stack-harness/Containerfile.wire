@@ -1,0 +1,12 @@
+# Overlay the CURRENT shared `wire` module (from the local postmodern-api checkout)
+# onto an app image, so the harness tests local HEAD across repos rather than the
+# stale `wire` release tarball the app images pin. (That stale pin is a real bug —
+# see README: server.py calls wire.personal_board / PERSONAL_BOARD_PREFIX, which
+# old tarballs lack, so every chat publish crashes.) Path is resolved at build time
+# so it's python-version agnostic.
+ARG BASE
+FROM ${BASE}
+USER root
+COPY wire.py /tmp/wire.py
+RUN cp /tmp/wire.py "$(python -c 'import wire,os;print(os.path.dirname(wire.__file__))')/wire.py" && rm /tmp/wire.py
+USER 10001

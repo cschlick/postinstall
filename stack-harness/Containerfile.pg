@@ -1,0 +1,13 @@
+FROM postgres:17
+ARG SRV
+ARG DBNAME
+COPY certs/ /tmp/certs/
+COPY pg/pg_hba.conf /etc/pg/pg_hba.conf
+RUN mkdir -p /certs \
+ && cp /tmp/certs/${SRV}.crt /certs/server.crt \
+ && cp /tmp/certs/${SRV}.key /certs/server.key \
+ && cp /tmp/certs/ca.crt /certs/ca.crt \
+ && chown -R 999:999 /certs /etc/pg && chmod 600 /certs/server.key \
+ && printf 'CREATE ROLE pm LOGIN;\nCREATE DATABASE %s OWNER pm;\n' "$DBNAME" > /docker-entrypoint-initdb.d/init.sql \
+ && rm -rf /tmp/certs
+CMD ["postgres","-c","ssl=on","-c","ssl_cert_file=/certs/server.crt","-c","ssl_key_file=/certs/server.key","-c","ssl_ca_file=/certs/ca.crt","-c","hba_file=/etc/pg/pg_hba.conf","-c","listen_addresses=*"]
