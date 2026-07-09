@@ -4,3 +4,4 @@
 #   git add -f ansible/vault-account.yml   (or vault-chat.yml)
 ansible/vault-account.yml
 ansible/vault-chat.yml
+ansible/vault-seed.yml

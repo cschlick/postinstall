@@ -1,0 +1,27 @@
+{# Managed by Ansible (roles/seed). Quadlet → systemd generates pm-seed.service on
+   daemon-reload. One-shot: NOT auto-started; run `systemctl start pm-seed`. #}
+[Unit]
+Description=postmodern seed (one-shot demo-world seeder, container)
+Documentation=https://github.com/postmodern-you/postmodern-server
+After=network-online.target
+Wants=network-online.target
+
+[Container]
+Image={{ seed_image }}
+Pull={{ 'newer' if seed_pull_always else 'missing' }}
+# host stack: reach the planes + mesh Postgres over the overlay directly.
+Network=host
+EnvironmentFile={{ seed_env_file }}
+# Mesh client identity (client.*, ca.crt) the seeder presents to the mesh Postgres
+# for board creation. Read-only; owned by the pm user (uid {{ seed_uid }}).
+Volume={{ mesh_client_tls_dir }}:{{ mesh_client_tls_dir }}:ro
+
+[Service]
+Environment=REGISTRY_AUTH_FILE={{ seed_authfile }}
+# Run-to-completion job: do not restart. Give a slow scale-world run room. If your
+# podman/quadlet marks the job failed on clean exit (Type=notify default), add
+# `Type=oneshot` here and re-verify `systemctl start pm-seed`.
+Restart=no
+TimeoutStartSec=1800
+# Deliberately NO [Install] section → pm-seed.service is not wired to a target and
+# never starts on boot. It is triggered explicitly by the operator.

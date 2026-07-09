@@ -1,0 +1,52 @@
+---
+- name: Verify
+  hosts: all
+  become: true
+  tasks:
+    - name: Stat the rendered artifacts
+      ansible.builtin.stat:
+        path: "{{ item }}"
+      register: v
+      loop:
+        - /etc/containers/systemd/pm-seed.container
+        - /etc/postmodern/seed.env
+        - /etc/containers/pm-ghcr-auth.json
+
+    - name: Assert artifacts exist with the right modes
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          - v.results[0].stat.exists
+          - v.results[1].stat.exists
+          - v.results[1].stat.mode == '0600'
+          - v.results[2].stat.exists
+          - v.results[2].stat.mode == '0600'
+
+    - name: Read quadlet + env
+      ansible.builtin.slurp:
+        src: "{{ item }}"
+      register: c
+      loop:
+        - /etc/containers/systemd/pm-seed.container
+        - /etc/postmodern/seed.env
+
+    - name: Assert one-shot quadlet (no [Install], mesh cert mount) + env DSN/urls
+      vars:
+        q: "{{ c.results[0].content | b64decode }}"
+        e: "{{ c.results[1].content | b64decode }}"
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          - "'[Install]' not in q"
+          - "'WantedBy' not in q"
+          - "'Volume=/etc/pki/pm:/etc/pki/pm:ro' in q"
+          - "'CHAT_WS_URL=ws://chat01.pm.internal:8765' in e"
+          - "'ACCOUNT_WS_URL=ws://accounts01.pm.internal:8766' in e"
+          - "'CHAT_DB_URL=postgresql://pm@db01.pm.internal:5432/chat?sslmode=verify-full' in e"
+          - "'SEED_SMALL=1' in e"
+
+    - name: pm-seed.service exists but is NOT enabled (never runs on boot)
+      ansible.builtin.command: systemctl is-enabled pm-seed.service
+      register: en
+      changed_when: false
+      failed_when: en.stdout == "enabled"

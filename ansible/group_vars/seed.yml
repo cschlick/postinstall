@@ -1,0 +1,22 @@
+---
+# The seed service profile — STACKS on a base profile (usually gw_node): it needs
+# the overlay to reach the planes + mesh Postgres. It opens NO ports (the seeder
+# only makes OUTBOUND connections), so there is no nftables surface to add.
+# Config, NO secrets (those live in ansible/vault-seed.yml).
+#
+# These are single-stack defaults; `pmdeploy stack <suffix>` overrides the three
+# target names + the DB host per suffix (chat_<suffix>, accounts_<suffix>,
+# db_chat_<suffix>) via extra-vars.
+seed_enabled: true
+
+seed_image_tag: "latest"                       # or a pinned version
+seed_ghcr_user: "cschlick"
+
+# target planes (mesh names; ws:// — the overlay is the transport security)
+seed_chat_ws_url: "ws://chat01.pm.internal:8765"
+seed_account_ws_url: "ws://accounts01.pm.internal:8766"
+
+# chat DB over mesh mTLS (auto DSN against the mesh_client cert)
+seed_chat_db_host: "db01.pm.internal"
+
+seed_small: true                               # start with the fast preset

@@ -1,0 +1,19 @@
+---
+# Pre-place dummy mesh-client certs so mesh_client's `gw cert-request` (creates:
+# client.crt) is skipped — there's no mesh in the container. The render path
+# (profile + key-perm enforce) still runs on these.
+- name: Prepare
+  hosts: all
+  become: true
+  tasks:
+    - name: Ensure the mesh client TLS dir
+      ansible.builtin.file:
+        path: /etc/pki/pm
+        state: directory
+        mode: "0755"
+    - name: Pre-place dummy client identity
+      ansible.builtin.copy:
+        content: "DUMMY\n"
+        dest: "/etc/pki/pm/{{ item }}"
+        mode: "0644"
+      loop: [client.crt, client.key, ca.crt]

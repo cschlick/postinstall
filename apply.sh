@@ -22,6 +22,9 @@
 #   CHAT=1 bash apply.sh     -> chat service profile (stacks like account): the chat
 #                               plane as a GHCR container (podman quadlet); backbone
 #                               NATS + Postgres + R2. Needs the vault password.
+#   SEED=1 bash apply.sh     -> seed service profile (stacks on gw_node): a one-shot
+#                               demo-world seeder (GHCR container). Installs but does
+#                               NOT start it; run `systemctl start pm-seed`. Needs the vault.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -43,6 +46,8 @@ EXTRA=()
 [ "${ACCOUNT:-0}" = 1 ] && [ -f "$ROOT/ansible/vault-account.yml" ] && EXTRA+=(-e @"$ROOT/ansible/vault-account.yml")
 [ "${CHAT:-0}" = 1 ] && EXTRA+=(-e @"$ROOT/ansible/group_vars/chat.yml")
 [ "${CHAT:-0}" = 1 ] && [ -f "$ROOT/ansible/vault-chat.yml" ] && EXTRA+=(-e @"$ROOT/ansible/vault-chat.yml")
+[ "${SEED:-0}" = 1 ] && EXTRA+=(-e @"$ROOT/ansible/group_vars/seed.yml")
+[ "${SEED:-0}" = 1 ] && [ -f "$ROOT/ansible/vault-seed.yml" ] && EXTRA+=(-e @"$ROOT/ansible/vault-seed.yml")
 # Deploy-time extra vars (pmdeploy --var / --local-db writes this). Lives outside
 # the repo so it survives ansible-pull's checkout reset. e.g. a local-DB box:
 #   postgres_socket_only: true  /  account_db_local: true

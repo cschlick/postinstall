@@ -1,0 +1,86 @@
+---
+# Deploy the one-shot seeder as a pinned GHCR container via a podman quadlet that
+# is NOT wired to any target (never runs on boot). Trigger: systemctl start pm-seed.
+# Mirrors chat_server minus the service bits (no port, no start, no health gate).
+
+- name: Assert required deploy config is set
+  ansible.builtin.assert:
+    quiet: true
+    that:
+      - seed_image_tag | length > 0
+      - seed_chat_ws_url | length > 0
+      - seed_account_ws_url | length > 0
+      - (seed_chat_db_host | length > 0) or (seed_chat_db_url | length > 0)
+      - seed_ghcr_user | length > 0
+      - seed_ghcr_token | default('') | length > 0
+      - seed_chat_bot_claim_secret | default('') | length > 0
+      - seed_pw | default('') | length > 0
+    fail_msg: >-
+      seed needs (from group_vars/seed + the vault): seed_image_tag,
+      seed_chat_ws_url, seed_account_ws_url, a chat DB (seed_chat_db_host or
+      seed_chat_db_url), seed_ghcr_user/token, seed_chat_bot_claim_secret, seed_pw.
+
+- name: Install podman (application-workload runtime)
+  ansible.builtin.apt:
+    name: podman
+    state: present
+    update_cache: true
+
+- name: Ensure config + quadlet directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  loop:
+    - /etc/postmodern
+    - /etc/containers
+    - /etc/containers/systemd
+
+# GHCR pull secret (PRIVATE package).
+- name: Install the GHCR pull-secret authfile
+  ansible.builtin.template:
+    src: pm-ghcr-auth.json.j2
+    dest: "{{ seed_authfile }}"
+    owner: root
+    group: root
+    mode: "0600"
+  no_log: true
+
+# Mesh client identity (client.key/crt + ca.crt) from the anchor — the seeder
+# ALWAYS needs it to present a client cert to the mesh Postgres for board creation.
+# mesh_client also ensures the pm user/group and enforces the 0600 key.
+- name: Obtain the mesh client identity for the backbone
+  ansible.builtin.include_role:
+    name: mesh_client
+
+- name: Render the seed env file
+  ansible.builtin.template:
+    src: seed.env.j2
+    dest: "{{ seed_env_file }}"
+    owner: root
+    group: root
+    mode: "0600"
+  no_log: true
+
+- name: Install the pm-seed.container quadlet
+  ansible.builtin.template:
+    src: pm-seed.container.j2
+    dest: "{{ seed_quadlet }}"
+    owner: root
+    group: root
+    mode: "0644"
+
+# Generate pm-seed.service from the quadlet so the unit exists for a manual start.
+- name: Reload systemd so the quadlet generates pm-seed.service
+  ansible.builtin.systemd_service:
+    daemon_reload: true
+
+# Pre-pull so the first `systemctl start pm-seed` is instant. NEVER start it here.
+- name: Pull the seed image
+  ansible.builtin.command: "podman pull {{ seed_image }}"
+  environment:
+    REGISTRY_AUTH_FILE: "{{ seed_authfile }}"
+  changed_when: false
+  when: seed_deploy_run

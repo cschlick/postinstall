@@ -1,0 +1,10 @@
+{# Managed by Ansible (roles/chat_server). GHCR pull secret — the package is
+   private, so podman needs read:packages to pull the image. 0600 root. Shared
+   path with the account plane (a host runs one plane). #}
+{
+  "auths": {
+    "{{ seed_ghcr_registry }}": {
+      "auth": "{{ (seed_ghcr_user ~ ':' ~ seed_ghcr_token) | b64encode }}"
+    }
+  }
+}

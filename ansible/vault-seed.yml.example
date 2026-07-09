@@ -1,0 +1,10 @@
+---
+# SECRETS for the seed profile. Copy to vault-seed.yml, fill, then:
+#   cd ansible && ansible-vault encrypt vault-seed.yml
+# vault-seed.yml is gitignored; loaded explicitly by apply.sh (SEED=1) via
+# ANSIBLE_VAULT_PASSWORD_FILE. Once encrypted it may be committed: git add -f ansible/vault-seed.yml
+
+seed_ghcr_token: "ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"   # a GitHub read:packages PAT for seed_ghcr_user
+# MUST equal the deployed chat plane's CHAT_BOT_CLAIM_SECRET, or harold/bots won't claim.
+seed_chat_bot_claim_secret: "<the chat plane's bot claim secret>"
+seed_pw: "<a strong password for the seeded tester + crowd logins>"

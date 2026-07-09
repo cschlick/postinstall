@@ -1,0 +1,15 @@
+---
+galaxy_info:
+  role_name: seed
+  author: cschlick
+  description: >-
+    postmodern seed (one-shot demo-world seeder) as a pinned GHCR container via a podman quadlet
+    (Network=host; backbone NATS + Postgres + object store; /healthz deploy gate).
+    Runtime contract: postmodern-server/SEED_DEPLOY_ANSIBLE_SPEC.md.
+  license: MIT
+  min_ansible_version: "2.15"
+  platforms:
+    - name: Debian
+      versions:
+        - trixie
+dependencies: []

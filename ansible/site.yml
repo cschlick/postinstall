@@ -46,6 +46,12 @@
     - role: chat_server
       when: chat_server_enabled | default(false)
       tags: [chat_server]
+    # seed profile only (group_vars/seed.yml; stacks on gw_node). A one-shot
+    # demo-world seeder run as a GHCR container via a podman quadlet (operator
+    # triggers it with `systemctl start pm-seed`).
+    - role: seed
+      when: seed_enabled | default(false)
+      tags: [seed]
     - role: auditd
       tags: [auditd]
     - role: pwquality

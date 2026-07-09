@@ -1,0 +1,18 @@
+---
+- name: Converge
+  hosts: all
+  become: true
+  vars:
+    # Render-only: no image pull, never start (the seed is operator-triggered).
+    seed_deploy_run: false
+    seed_image_repo: "localhost/seed-standin"
+    seed_image_tag: "test"
+    seed_ghcr_user: "test-bot"
+    seed_ghcr_token: "ghp_testtoken"
+    seed_chat_ws_url: "ws://chat01.pm.internal:8765"
+    seed_account_ws_url: "ws://accounts01.pm.internal:8766"
+    seed_chat_db_host: "db01.pm.internal"
+    seed_chat_bot_claim_secret: "test-bot-claim"
+    seed_pw: "test-seed-pw"
+  roles:
+    - role: seed
