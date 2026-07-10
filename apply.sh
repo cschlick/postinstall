@@ -35,6 +35,22 @@ REPO="https://gitlab.com/cschlick/postinstall.git"
 
 EXTRA=()
 [ "${IMAGE_BUILD:-0}" = 1 ] && EXTRA+=(-e image_build=true)
+
+# Load a service profile's ansible-vault file, but REQUIRE it when the profile is
+# enabled: a missing vault otherwise degrades into a confusing "token empty" role
+# assert several tasks later (been there). Fail loudly, here, at the real cause.
+# $1 = the profile flag's value, $2 = vault filename under ansible/.
+require_vault() {
+  [ "$1" = 1 ] || return 0
+  local f="$ROOT/ansible/$2"
+  if [ ! -f "$f" ]; then
+    echo "apply.sh: this profile needs ansible/$2, which is missing. Create it from" \
+         "ansible/$2.example, 'ansible-vault encrypt' it, then 'git add -f ansible/$2'" \
+         "and push (it's gitignored). Aborting." >&2
+    exit 1
+  fi
+  EXTRA+=(-e @"$f")
+}
 [ "${DEV:-0}" = 1 ] && EXTRA+=(-e @"$ROOT/ansible/group_vars/dev.yml")
 [ "${GW_NODE:-0}" = 1 ] && EXTRA+=(-e @"$ROOT/ansible/group_vars/gw_node.yml")
 [ "${NATS:-0}" = 1 ] && EXTRA+=(-e @"$ROOT/ansible/group_vars/nats.yml")
@@ -43,16 +59,16 @@ EXTRA=()
 # vault.yml). Provide the vault password via ANSIBLE_VAULT_PASSWORD_FILE (ansible-pull
 # auto-uses it). vars.yml is committed; vault.yml is operator-placed + gitignored.
 [ "${ACCOUNT:-0}" = 1 ] && EXTRA+=(-e @"$ROOT/ansible/group_vars/account/vars.yml")
-# The vault lives OUTSIDE group_vars so molecule/CI never auto-load (and try to
-# decrypt) it; apply loads it explicitly. Needs the vault password via
-# ANSIBLE_VAULT_PASSWORD_FILE. Guarded so a non-account run without it is fine.
-[ "${ACCOUNT:-0}" = 1 ] && [ -f "$ROOT/ansible/vault-account.yml" ] && EXTRA+=(-e @"$ROOT/ansible/vault-account.yml")
+# Each service vault lives OUTSIDE group_vars so molecule/CI never auto-load (and
+# try to decrypt) it; apply loads it explicitly and REQUIRES it when the profile
+# is on (see require_vault). Needs the vault password via ANSIBLE_VAULT_PASSWORD_FILE.
+require_vault "${ACCOUNT:-0}" vault-account.yml
 [ "${CHAT:-0}" = 1 ] && EXTRA+=(-e @"$ROOT/ansible/group_vars/chat.yml")
-[ "${CHAT:-0}" = 1 ] && [ -f "$ROOT/ansible/vault-chat.yml" ] && EXTRA+=(-e @"$ROOT/ansible/vault-chat.yml")
+require_vault "${CHAT:-0}" vault-chat.yml
 [ "${SEED:-0}" = 1 ] && EXTRA+=(-e @"$ROOT/ansible/group_vars/seed.yml")
-[ "${SEED:-0}" = 1 ] && [ -f "$ROOT/ansible/vault-seed.yml" ] && EXTRA+=(-e @"$ROOT/ansible/vault-seed.yml")
+require_vault "${SEED:-0}" vault-seed.yml
 [ "${FLUTTER:-0}" = 1 ] && EXTRA+=(-e @"$ROOT/ansible/group_vars/flutter.yml")
-[ "${FLUTTER:-0}" = 1 ] && [ -f "$ROOT/ansible/vault-flutter.yml" ] && EXTRA+=(-e @"$ROOT/ansible/vault-flutter.yml")
+require_vault "${FLUTTER:-0}" vault-flutter.yml
 # Deploy-time extra vars (pmdeploy --var / --local-db writes this). Lives outside
 # the repo so it survives ansible-pull's checkout reset. e.g. a local-DB box:
 #   postgres_socket_only: true  /  account_db_local: true
