@@ -1,6 +1,6 @@
 ---
 # The dev profile — a very open development box: everything the bastion does
-# (public SSH + ProxyJump), plus SSH over IPv4 as well as IPv6, password SSH
+# (public SSH over IPv4+IPv6 + ProxyJump), plus password SSH
 # login (pmuser's emergency console password; faillock and PerSourcePenalties
 # still throttle guessing), Claude Code installed and kept current on every
 # apply, and NO account purging (a dev box may be a pre-existing machine whose
@@ -8,8 +8,8 @@
 # inventory/hosts.yml, or locally via DEV=1 bash apply.sh. Put a host in
 # exactly ONE of the bastion / dev / gw_node groups.
 
-# SSH open to the public internet — over IPv4 as well as IPv6 (the other
-# profiles are IPv6-only): sshd listens on 0.0.0.0 and the firewall accepts.
+# SSH open to the public internet over IPv4+IPv6 (same as bastion; gw_node and
+# the service profiles stay IPv6/mesh-only): sshd listens on 0.0.0.0, fw accepts.
 nftables_ssh_public: true
 nftables_ssh_ipv4: true
 ssh_listen_ipv4: true

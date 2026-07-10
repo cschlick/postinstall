@@ -6,8 +6,8 @@
 # IMAGE_BUILD=1 bash apply.sh  -> also runs the cloud_init + image_generalize
 # roles to produce a generalized, cloud-init-ready Vultr image. Snapshot afterward.
 #
-# Profiles (no flag = bastion: public IPv6 SSH, key-only, ProxyJump):
-#   DEV=1 bash apply.sh      -> dev profile: bastion + IPv4 SSH + password SSH
+# Profiles (no flag = bastion: public SSH over IPv4+IPv6, key-only, ProxyJump):
+#   DEV=1 bash apply.sh      -> dev profile: bastion + password SSH
 #                               + Claude Code; purges no accounts
 #   GW_NODE=1 bash apply.sh  -> gw_node profile: SSH only on the mesh overlay (gw-*),
 #                               no forwarding. The Vultr console is your fallback

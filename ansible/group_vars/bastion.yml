@@ -5,8 +5,12 @@
 # values so a bastion stays permissive even if the defaults are ever tightened.
 # Put a host in exactly ONE of the bastion / dev / gw_node groups.
 
-# SSH open to the public internet (IPv6; key-only).
+# SSH open to the public internet, over IPv4 as well as IPv6 (key-only): sshd
+# listens on 0.0.0.0 and the firewall accepts v4. (dev adds password SSH on top;
+# gw_node and the service profiles stay IPv6/mesh-only.)
 nftables_ssh_public: true
+nftables_ssh_ipv4: true
+ssh_listen_ipv4: true
 
 # Serve as a ProxyJump host: SSH-only local forwarding (ssh -J), agent
 # forwarding stays off. See ssh_allow_proxy_jump in roles/ssh/defaults.
