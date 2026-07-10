@@ -16,6 +16,9 @@ flutter_ghcr_user: "cschlick"
 # list every port it needs in a host_vars override.
 nftables_extra_tcp_ports: [8080]
 
-# NOTE on backends: the account/chat URLs are baked into the IMAGE at build time
-# (postmodern-flutter --build-arg ACCOUNT_URL / CHAT_URL), NOT set here. Point
-# flutter_image_tag at an image built with the URLs your browsers should hit.
+# NOTE on backends: the account/chat URLs are fed at DEPLOY time via config.json,
+# NOT baked into the image — one image serves every stack. They're per-stack, so
+# set them in host_vars / pmdeploy extra_vars, not here:
+#   flutter_chat_url:    "wss://chat-<suffix>.pm.internal:8765"
+#   flutter_account_url: "wss://accounts-<suffix>.pm.internal:8766"
+# Empty (the default) → the client falls back to its in-code defaults.

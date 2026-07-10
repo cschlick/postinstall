@@ -1,0 +1,8 @@
+{# Managed by Ansible (roles/flutter). The web client's runtime backend config,
+   bind-mounted onto {{ flutter_config_container }} and served at /config.json.
+   Contract: postmodern-flutter/RUNTIME_CONFIG.md — keys are optional; an empty
+   URL is dropped so the client falls through to its in-code default. Both empty
+   renders `{}` (the same as the image's baked default). No secrets here. #}
+{{ {'chatUrl': flutter_chat_url, 'accountUrl': flutter_account_url}
+   | dict2items | rejectattr('value', 'equalto', '') | list | items2dict
+   | to_nice_json }}

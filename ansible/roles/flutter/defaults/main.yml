@@ -1,14 +1,16 @@
 ---
 # roles/flutter — the postmodern web client (a static Flutter web build served by
-# unprivileged nginx) run as a pinned GHCR container via a podman quadlet. The
-# leanest plane: no runtime config, no secrets except the GHCR pull token, no DB,
-# no mesh client. Client-facing on :8080 (plain HTTP — front with a TLS edge).
-# Runtime contract: postmodern-flutter/CONTAINER.md.
+# unprivileged nginx) run as a pinned GHCR container via a podman quadlet. A lean
+# plane: no secrets except the GHCR pull token, no DB, no mesh client. One runtime
+# input — a bind-mounted config.json carrying this stack's backend URLs.
+# Client-facing on :8080 (plain HTTP — front with a TLS edge).
+# Runtime contract: postmodern-flutter/CONTAINER.md + RUNTIME_CONFIG.md.
 #
-# IMPORTANT: the backend URLs (account/chat) are baked at IMAGE BUILD time
-# (--build-arg ACCOUNT_URL / CHAT_URL → --dart-define), NOT fed at runtime. To
-# point this at a specific stack's planes, deploy an image tag built with those
-# URLs; this role only sets flutter_image_tag. See CONTAINER.md + the README.
+# BACKENDS: the account/chat URLs are fed at DEPLOY time via config.json (below),
+# so ONE image serves every stack. Set flutter_chat_url / flutter_account_url to
+# this stack's planes (pmdeploy passes them as extra_vars). Leave them empty to
+# fall through to the client's in-code defaults. (Compile-time --dart-define is
+# still an override baked into a custom image, but is no longer needed here.)
 
 # --- image ---------------------------------------------------------------------
 flutter_image_repo: ghcr.io/postmodern-you/postmodern-web
@@ -23,6 +25,17 @@ flutter_authfile: /etc/containers/pm-ghcr-auth.json
 
 # --- run / paths ---------------------------------------------------------------
 flutter_quadlet: /etc/containers/systemd/web.container
+
+# --- runtime backend config (config.json) --------------------------------------
+# This stack's backend URLs, fed to the client at boot. Empty → the key is
+# omitted from config.json and the client uses its in-code default. Set per stack
+# (pmdeploy passes these as extra_vars). Contract: RUNTIME_CONFIG.md.
+flutter_chat_url: ""                  # e.g. "wss://chat-v5.pm.internal:8765"
+flutter_account_url: ""               # e.g. "wss://accounts-v5.pm.internal:8766"
+# Host file we template, and the in-container path it is bind-mounted onto (the
+# image serves /config.json from here via nginx alias — must match CONTAINER.md).
+flutter_config_host: /etc/pm/web-config.json
+flutter_config_container: /srv/pm/config.json
 
 # --- network / bind ------------------------------------------------------------
 flutter_port: 8080                    # nginx (uid 101) listens here; open it in group_vars/flutter.yml

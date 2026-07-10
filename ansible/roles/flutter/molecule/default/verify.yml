@@ -10,6 +10,7 @@
       loop:
         - /etc/containers/systemd/web.container
         - /etc/containers/pm-ghcr-auth.json
+        - /etc/pm/web-config.json
 
     - name: Assert artifacts exist with the right modes
       ansible.builtin.assert:
@@ -18,13 +19,15 @@
           - v.results[0].stat.exists
           - v.results[1].stat.exists
           - v.results[1].stat.mode == '0600'
+          - v.results[2].stat.exists
+          - v.results[2].stat.mode == '0644'
 
     - name: Read the quadlet
       ansible.builtin.slurp:
         src: /etc/containers/systemd/web.container
       register: q
 
-    - name: Assert the quadlet pins the image, host net, GHCR auth, boot-wired
+    - name: Assert the quadlet pins the image, host net, GHCR auth, config mount, boot-wired
       vars:
         quadlet: "{{ q.content | b64decode }}"
       ansible.builtin.assert:
@@ -34,4 +37,19 @@
           - "'Network=host' in quadlet"
           - "'\nAuthFile=' not in quadlet"
           - "'Environment=REGISTRY_AUTH_FILE=/etc/containers/pm-ghcr-auth.json' in quadlet"
+          - "'Volume=/etc/pm/web-config.json:/srv/pm/config.json:ro' in quadlet"
           - "'WantedBy=multi-user.target' in quadlet"
+
+    - name: Read the rendered config.json
+      ansible.builtin.slurp:
+        src: /etc/pm/web-config.json
+      register: cfg
+
+    - name: Assert config.json carries this stack's backend URLs as valid JSON
+      vars:
+        parsed: "{{ cfg.content | b64decode | from_json }}"
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          - parsed.chatUrl == 'wss://chat-vtest.pm.internal:8765'
+          - parsed.accountUrl == 'wss://accounts-vtest.pm.internal:8766'

@@ -11,5 +11,8 @@
     flutter_image_tag: "test"
     flutter_ghcr_user: "test-bot"
     flutter_ghcr_token: "ghp_testtoken"
+    # sample per-stack backend URLs → exercise config.json rendering
+    flutter_chat_url: "wss://chat-vtest.pm.internal:8765"
+    flutter_account_url: "wss://accounts-vtest.pm.internal:8766"
   roles:
     - role: flutter

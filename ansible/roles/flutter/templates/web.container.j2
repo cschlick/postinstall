@@ -14,9 +14,12 @@ Image={{ flutter_image }}
 # :latest); missing = pull only when absent (immutable version tags).
 Pull={{ 'newer' if flutter_pull_always else 'missing' }}
 # host stack: nginx (uid 101) binds :{{ flutter_port }} on the host, governed by
-# the host nftables directly (open it in group_vars/flutter.yml). No runtime env,
-# no bind-mounts — the image is self-contained static files.
+# the host nftables directly (open it in group_vars/flutter.yml).
 Network=host
+# This stack's backend URLs — a templated, non-secret config.json served at
+# /config.json (:ro). A file bind-mount is resolved at container start, so a
+# content change needs a restart; the config task notifies Restart web.
+Volume={{ flutter_config_host }}:{{ flutter_config_container }}:ro
 
 [Service]
 # Give podman the GHCR pull-secret (quadlet has no [Container] AuthFile key).

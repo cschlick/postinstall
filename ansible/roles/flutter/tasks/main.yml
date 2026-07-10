@@ -1,8 +1,8 @@
 ---
 # Deploy the web client as a pinned GHCR container via a podman quadlet.
 # Network=host, so nginx binds :8080 on the host stack (governed by host nftables).
-# No runtime config, no bind-mounted secrets — the image is self-contained static
-# files; the only secret is the GHCR read:packages token to PULL it.
+# The one runtime input is a bind-mounted (non-secret) config.json of backend
+# URLs; the only secret is the GHCR read:packages token to PULL the image.
 
 - name: Assert required deploy config is set
   ansible.builtin.assert:
@@ -31,6 +31,27 @@
   loop:
     - /etc/containers
     - /etc/containers/systemd
+
+# --- runtime backend config (bind-mounted → /config.json) ----------------------
+# Templated before the quadlet so the bind source exists before web.service ever
+# starts. Not secret (just URLs), so world-readable. A file bind-mount is pinned
+# at container start, so a content change must restart web to take effect.
+- name: Ensure the web-config directory
+  ansible.builtin.file:
+    path: "{{ flutter_config_host | dirname }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Install the runtime backend config.json
+  ansible.builtin.template:
+    src: web-config.json.j2
+    dest: "{{ flutter_config_host }}"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart web
 
 # --- GHCR pull secret (the package is PRIVATE) ---------------------------------
 - name: Install the GHCR pull-secret authfile
