@@ -62,6 +62,12 @@ require_vault() {
 }
 [ "${DEV:-0}" = 1 ] && EXTRA+=(-e @"$ROOT/ansible/group_vars/dev.yml")
 [ "${GW_NODE:-0}" = 1 ] && EXTRA+=(-e @"$ROOT/ansible/group_vars/gw_node.yml")
+# Default base = bastion (no DEV/GW_NODE flag). ansible-pull runs against
+# `localhost,`, which is in no inventory group, so group_vars/bastion.yml would
+# NEVER auto-load — load it explicitly for the base's SSH/firewall (public v4+v6
+# SSH, ProxyJump). Loaded before the service group_vars so a bastion-based service
+# box (e.g. bastion+nats) gets the base first, then the service layers on.
+[ "${DEV:-0}" != 1 ] && [ "${GW_NODE:-0}" != 1 ] && EXTRA+=(-e @"$ROOT/ansible/group_vars/bastion.yml")
 [ "${NATS:-0}" = 1 ] && EXTRA+=(-e @"$ROOT/ansible/group_vars/nats.yml")
 [ "${POSTGRES:-0}" = 1 ] && EXTRA+=(-e @"$ROOT/ansible/group_vars/postgres.yml")
 # The account profile carries secrets in an ansible-vault file (group_vars/account/

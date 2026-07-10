@@ -18,6 +18,9 @@
           - "'ip6 saddr ::/0 tcp dport 22 ct state new accept' in nftables_ruleset.stdout"
           # Extra ports are accepted on both families.
           - "'tcp dport 9100 ct state new accept' in nftables_ruleset.stdout"   # from converge
+          # WireGuard underlay ports accepted on BOTH families (underlay may be v4 or v6).
+          - "'ip6 saddr ::/0 udp dport { 51900, 51901 } ct state new accept' in nftables_ruleset.stdout"
+          - "'ip saddr 0.0.0.0/0 udp dport { 51900, 51901 } ct state new accept' in nftables_ruleset.stdout"
           - "'nft-input-drop' in nftables_ruleset.stdout"
 
     # nftables.service is a oneshot (RemainAfterExit=yes): it loads the ruleset
