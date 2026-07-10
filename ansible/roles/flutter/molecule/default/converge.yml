@@ -1,0 +1,15 @@
+---
+- name: Converge
+  hosts: all
+  become: true
+  vars:
+    # Render-only: the private GHCR image can't be pulled in CI, so stage config
+    # without pull/start/health. (The live quadlet->systemd->podman path is the
+    # same one covered by the account_server scenario.)
+    flutter_deploy_run: false
+    flutter_image_repo: "localhost/web-standin"
+    flutter_image_tag: "test"
+    flutter_ghcr_user: "test-bot"
+    flutter_ghcr_token: "ghp_testtoken"
+  roles:
+    - role: flutter

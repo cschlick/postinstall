@@ -1,0 +1,37 @@
+---
+- name: Verify
+  hosts: all
+  become: true
+  tasks:
+    - name: Stat the rendered artifacts
+      ansible.builtin.stat:
+        path: "{{ item }}"
+      register: v
+      loop:
+        - /etc/containers/systemd/web.container
+        - /etc/containers/pm-ghcr-auth.json
+
+    - name: Assert artifacts exist with the right modes
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          - v.results[0].stat.exists
+          - v.results[1].stat.exists
+          - v.results[1].stat.mode == '0600'
+
+    - name: Read the quadlet
+      ansible.builtin.slurp:
+        src: /etc/containers/systemd/web.container
+      register: q
+
+    - name: Assert the quadlet pins the image, host net, GHCR auth, boot-wired
+      vars:
+        quadlet: "{{ q.content | b64decode }}"
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          - "'Image=localhost/web-standin:test' in quadlet"
+          - "'Network=host' in quadlet"
+          - "'\nAuthFile=' not in quadlet"
+          - "'Environment=REGISTRY_AUTH_FILE=/etc/containers/pm-ghcr-auth.json' in quadlet"
+          - "'WantedBy=multi-user.target' in quadlet"

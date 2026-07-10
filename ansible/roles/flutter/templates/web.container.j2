@@ -1,0 +1,30 @@
+{# Managed by Ansible (roles/flutter). Quadlet → systemd generates web.service on
+   daemon-reload. Runtime contract: postmodern-flutter/CONTAINER.md. #}
+[Unit]
+Description=postmodern web client (static Flutter build via nginx, container)
+Documentation=https://github.com/postmodern-you/postmodern-flutter
+After=network-online.target
+Wants=network-online.target
+
+[Container]
+Image={{ flutter_image }}
+# Private GHCR package → podman finds the read:packages authfile via
+# REGISTRY_AUTH_FILE in [Service] below.
+# newer = re-check the registry on each (re)start (for a mutable tag like
+# :latest); missing = pull only when absent (immutable version tags).
+Pull={{ 'newer' if flutter_pull_always else 'missing' }}
+# host stack: nginx (uid 101) binds :{{ flutter_port }} on the host, governed by
+# the host nftables directly (open it in group_vars/flutter.yml). No runtime env,
+# no bind-mounts — the image is self-contained static files.
+Network=host
+
+[Service]
+# Give podman the GHCR pull-secret (quadlet has no [Container] AuthFile key).
+Environment=REGISTRY_AUTH_FILE={{ flutter_authfile }}
+Restart=on-failure
+RestartSec=5
+# first boot pulls the image — give it room before systemd calls the start failed.
+TimeoutStartSec=300
+
+[Install]
+WantedBy=multi-user.target

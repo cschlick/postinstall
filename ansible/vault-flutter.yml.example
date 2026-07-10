@@ -1,0 +1,8 @@
+---
+# SECRETS for the flutter profile — just the GHCR read:packages token to PULL the
+# private web image (the image itself has no secrets). Copy to vault-flutter.yml:
+#   cd ansible && ansible-vault encrypt vault-flutter.yml
+# vault-flutter.yml is gitignored; loaded explicitly by apply.sh (FLUTTER=1).
+# Once encrypted it may be committed: git add -f ansible/vault-flutter.yml
+
+flutter_ghcr_token: "ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"   # read:packages

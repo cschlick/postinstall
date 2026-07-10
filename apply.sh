@@ -25,6 +25,9 @@
 #   SEED=1 bash apply.sh     -> seed service profile (stacks on gw_node): a one-shot
 #                               demo-world seeder (GHCR container). Installs but does
 #                               NOT start it; run `systemctl start pm-seed`. Needs the vault.
+#   FLUTTER=1 bash apply.sh  -> flutter (web client) service profile (stacks on
+#                               gw_node): the Flutter web build via nginx (GHCR
+#                               container), public on :8080. Needs the vault (GHCR token).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -48,6 +51,8 @@ EXTRA=()
 [ "${CHAT:-0}" = 1 ] && [ -f "$ROOT/ansible/vault-chat.yml" ] && EXTRA+=(-e @"$ROOT/ansible/vault-chat.yml")
 [ "${SEED:-0}" = 1 ] && EXTRA+=(-e @"$ROOT/ansible/group_vars/seed.yml")
 [ "${SEED:-0}" = 1 ] && [ -f "$ROOT/ansible/vault-seed.yml" ] && EXTRA+=(-e @"$ROOT/ansible/vault-seed.yml")
+[ "${FLUTTER:-0}" = 1 ] && EXTRA+=(-e @"$ROOT/ansible/group_vars/flutter.yml")
+[ "${FLUTTER:-0}" = 1 ] && [ -f "$ROOT/ansible/vault-flutter.yml" ] && EXTRA+=(-e @"$ROOT/ansible/vault-flutter.yml")
 # Deploy-time extra vars (pmdeploy --var / --local-db writes this). Lives outside
 # the repo so it survives ansible-pull's checkout reset. e.g. a local-DB box:
 #   postgres_socket_only: true  /  account_db_local: true

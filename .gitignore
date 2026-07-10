@@ -5,3 +5,4 @@
 ansible/vault-account.yml
 ansible/vault-chat.yml
 ansible/vault-seed.yml
+ansible/vault-flutter.yml

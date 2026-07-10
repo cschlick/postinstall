@@ -1,0 +1,93 @@
+---
+# Deploy the web client as a pinned GHCR container via a podman quadlet.
+# Network=host, so nginx binds :8080 on the host stack (governed by host nftables).
+# No runtime config, no bind-mounted secrets — the image is self-contained static
+# files; the only secret is the GHCR read:packages token to PULL it.
+
+- name: Assert required deploy config is set
+  ansible.builtin.assert:
+    quiet: true
+    that:
+      - flutter_image_tag | length > 0
+      - flutter_ghcr_user | length > 0
+      - flutter_ghcr_token | default('') | length > 0
+    fail_msg: >-
+      flutter needs (from group_vars/flutter + the vault): flutter_image_tag,
+      flutter_ghcr_user, flutter_ghcr_token.
+
+- name: Install podman (application-workload runtime)
+  ansible.builtin.apt:
+    name: podman
+    state: present
+    update_cache: true
+
+- name: Ensure the quadlet directory
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  loop:
+    - /etc/containers
+    - /etc/containers/systemd
+
+# --- GHCR pull secret (the package is PRIVATE) ---------------------------------
+- name: Install the GHCR pull-secret authfile
+  ansible.builtin.template:
+    src: pm-ghcr-auth.json.j2
+    dest: "{{ flutter_authfile }}"
+    owner: root
+    group: root
+    mode: "0600"
+  no_log: true
+
+- name: Install the web.container quadlet
+  ansible.builtin.template:
+    src: web.container.j2
+    dest: "{{ flutter_quadlet }}"
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - Reload systemd
+    - Restart web
+
+- name: Reload systemd so the quadlet generates web.service
+  ansible.builtin.systemd_service:
+    daemon_reload: true
+
+# --- mutable-tag refresh: pull a newer image each apply, restart iff changed --
+- name: Record the current image id
+  ansible.builtin.command: "podman image inspect --format '{{ '{{' }}.Id{{ '}}' }}' {{ flutter_image }}"
+  register: flutter_img_before
+  changed_when: false
+  failed_when: false
+  when: flutter_deploy_run and flutter_pull_always
+
+- name: Pull the latest image
+  ansible.builtin.command: "podman pull {{ flutter_image }}"
+  environment:
+    REGISTRY_AUTH_FILE: "{{ flutter_authfile }}"
+  register: flutter_pull
+  changed_when: flutter_img_before.stdout | default('') not in flutter_pull.stdout
+  notify: Restart web
+  when: flutter_deploy_run and flutter_pull_always
+
+- name: Start the web client
+  ansible.builtin.systemd_service:
+    name: web.service
+    state: started
+  when: flutter_deploy_run
+
+# --- deploy gate: nginx serves /healthz once up -------------------------------
+- name: Wait for the web client to become healthy
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ flutter_port }}/healthz"
+    status_code: 200
+  register: flutter_health
+  retries: "{{ flutter_health_retries }}"
+  delay: "{{ flutter_health_delay }}"
+  until: flutter_health.status == 200
+  changed_when: false
+  when: flutter_deploy_run

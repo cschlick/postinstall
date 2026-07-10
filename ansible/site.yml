@@ -52,6 +52,11 @@
     - role: seed
       when: seed_enabled | default(false)
       tags: [seed]
+    # flutter profile only (group_vars/flutter.yml; stacks on gw_node). The web
+    # client (static Flutter build via nginx) as a GHCR container; public :8080.
+    - role: flutter
+      when: flutter_server_enabled | default(false)
+      tags: [flutter]
     - role: auditd
       tags: [auditd]
     - role: pwquality

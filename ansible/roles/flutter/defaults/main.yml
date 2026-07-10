@@ -1,0 +1,36 @@
+---
+# roles/flutter — the postmodern web client (a static Flutter web build served by
+# unprivileged nginx) run as a pinned GHCR container via a podman quadlet. The
+# leanest plane: no runtime config, no secrets except the GHCR pull token, no DB,
+# no mesh client. Client-facing on :8080 (plain HTTP — front with a TLS edge).
+# Runtime contract: postmodern-flutter/CONTAINER.md.
+#
+# IMPORTANT: the backend URLs (account/chat) are baked at IMAGE BUILD time
+# (--build-arg ACCOUNT_URL / CHAT_URL → --dart-define), NOT fed at runtime. To
+# point this at a specific stack's planes, deploy an image tag built with those
+# URLs; this role only sets flutter_image_tag. See CONTAINER.md + the README.
+
+# --- image ---------------------------------------------------------------------
+flutter_image_repo: ghcr.io/postmodern-you/postmodern-web
+flutter_image_tag: ""                 # REQUIRED (e.g. "v1.4.0", "latest", or a stack-specific tag)
+flutter_image: "{{ flutter_image_repo }}:{{ flutter_image_tag }}"
+flutter_pull_always: false            # true for a mutable tag (:latest) — re-pull+restart iff digest moved
+
+# --- GHCR pull secret (PRIVATE package) ----------------------------------------
+flutter_ghcr_registry: ghcr.io
+flutter_ghcr_user: ""                 # GitHub user/bot the read:packages token belongs to
+flutter_authfile: /etc/containers/pm-ghcr-auth.json
+
+# --- run / paths ---------------------------------------------------------------
+flutter_quadlet: /etc/containers/systemd/web.container
+
+# --- network / bind ------------------------------------------------------------
+flutter_port: 8080                    # nginx (uid 101) listens here; open it in group_vars/flutter.yml
+
+# --- health gate ---------------------------------------------------------------
+flutter_health_retries: 30
+flutter_health_delay: 2
+
+# Stage config only (render + daemon-reload, no pull/start/health-check). Molecule
+# sets this false — the private image isn't pullable in CI.
+flutter_deploy_run: true

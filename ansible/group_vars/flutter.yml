@@ -1,0 +1,21 @@
+---
+# The flutter (web client) service profile — STACKS on a base profile (usually
+# gw_node: mesh-only SSH, but the webapp port IS public). Config, NO secrets
+# (the GHCR pull token lives in ansible/vault-flutter.yml). Auto-loads for hosts
+# in the `flutter` group.
+flutter_server_enabled: true
+
+flutter_image_tag: "latest"
+flutter_pull_always: true
+
+flutter_ghcr_user: "cschlick"
+
+# --- firewall: client-facing webapp on :8080 (public) --------------------------
+# The webapp is served to browsers over the public internet — open 8080.
+# NOTE: group_vars lists don't merge — a host also stacking another service must
+# list every port it needs in a host_vars override.
+nftables_extra_tcp_ports: [8080]
+
+# NOTE on backends: the account/chat URLs are baked into the IMAGE at build time
+# (postmodern-flutter --build-arg ACCOUNT_URL / CHAT_URL), NOT set here. Point
+# flutter_image_tag at an image built with the URLs your browsers should hit.
