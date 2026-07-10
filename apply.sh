@@ -36,6 +36,15 @@ REPO="https://gitlab.com/cschlick/postinstall.git"
 EXTRA=()
 [ "${IMAGE_BUILD:-0}" = 1 ] && EXTRA+=(-e image_build=true)
 
+# Vault password: ansible-pull auto-reads ANSIBLE_VAULT_PASSWORD_FILE. pmdeploy
+# writes it to /root/.ansible-vault-pass at provision time but only exports it in
+# that shell — so a manual re-run (sudo … apply.sh) has none. If we're root and
+# that file is present, adopt it, so `sudo FLUTTER=1 bash apply.sh` Just Works.
+if [ -z "${ANSIBLE_VAULT_PASSWORD_FILE:-}" ] && [ "$(id -u)" = 0 ] \
+   && [ -r /root/.ansible-vault-pass ]; then
+  export ANSIBLE_VAULT_PASSWORD_FILE=/root/.ansible-vault-pass
+fi
+
 # Load a service profile's ansible-vault file, but REQUIRE it when the profile is
 # enabled: a missing vault otherwise degrades into a confusing "token empty" role
 # assert several tasks later (been there). Fail loudly, here, at the real cause.
