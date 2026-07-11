@@ -19,4 +19,14 @@ seed_account_ws_url: "ws://accounts01.pm.internal:8766"
 # chat DB over mesh mTLS (auto DSN against the mesh_client cert)
 seed_chat_db_host: "db01.pm.internal"
 
-seed_small: true                               # start with the fast preset
+# auto-seed a full (non-small) world on boot, ~180s after the overlay is up
+seed_small: false                              # false → the full scale world
+seed_autostart: true                           # fire once on boot (see roles/seed)
+seed_autostart_delay: 180                      # settle seconds after gw-* appears
+# a much larger world (optional): scale by width; keep any one room under the fold ceiling
+# seed_env_extra:
+#   SEED_BOARDS: 30
+#   SEED_POSTS: 60
+#   SEED_HALLS: 15
+#   SEED_CROWD: 400
+#   SEED_DMS: 200

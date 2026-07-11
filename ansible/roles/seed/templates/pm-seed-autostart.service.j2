@@ -1,0 +1,32 @@
+{# Managed by Ansible (roles/seed). Fires pm-seed once the mesh overlay is up. #}
+[Unit]
+Description=Auto-seed the demo world once the mesh overlay is up
+After=network-online.target
+Wants=network-online.target
+{% if seed_autostart_once %}
+# Run at most once per node — the seeded world accumulates.
+ConditionPathExists=!{{ seed_state_dir }}/.seeded
+{% endif %}
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+# 1) wait (up to seed_iface_wait_secs) for a greasewood overlay interface to appear.
+#    /sys/class/net/ has one entry per interface — simplest reliable check, no awk.
+ExecStartPre=/bin/sh -c 'end=$(( $(date +%s) + {{ seed_iface_wait_secs }} )); \
+  while [ $(date +%s) -lt $end ]; do \
+    ls /sys/class/net/ | grep -q "^{{ seed_mesh_iface_prefix }}" && exit 0; \
+    sleep 2; \
+  done; echo "no {{ seed_mesh_iface_prefix }}* interface after {{ seed_iface_wait_secs }}s" >&2; exit 1'
+# 2) settle: give the backbone + planes time to come up and be reachable
+ExecStartPre=/bin/sleep {{ seed_autostart_delay }}
+# 3) run the seeder to completion (SEED_SMALL from seed.env → scale world by default)
+ExecStart=/usr/bin/systemctl start --wait pm-seed.service
+{% if seed_autostart_once %}
+# 4) mark done ONLY on success (ExecStartPost runs iff ExecStart succeeded), so a
+#    failed seed retries on the next boot instead of being skipped.
+ExecStartPost=/bin/sh -c 'mkdir -p {{ seed_state_dir }} && touch {{ seed_state_dir }}/.seeded'
+{% endif %}
+
+[Install]
+WantedBy=multi-user.target

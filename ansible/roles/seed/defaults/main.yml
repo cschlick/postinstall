@@ -1,8 +1,11 @@
 ---
-# roles/seed — a one-shot demo-world seeder, run as a pinned GHCR container via a
-# podman quadlet that is NOT auto-started (triggered with `systemctl start pm-seed`).
-# Stacks on gw_node (needs the overlay + a mesh client cert). Secrets come from
-# ansible/vault-seed.yml; this role never carries a secret value.
+# roles/seed — a demo-world seeder, run as a pinned GHCR container via a podman
+# quadlet. The seeder container (pm-seed) is NOT auto-started directly; instead an
+# enabled trigger unit (pm-seed-autostart) waits for the mesh overlay and fires it
+# once on boot (see tasks + pm-seed-autostart.service.j2). The manual path
+# (`systemctl start pm-seed`) still works. Stacks on gw_node (needs the overlay + a
+# mesh client cert). Secrets come from ansible/vault-seed.yml; this role never
+# carries a secret value.
 # Mirrors roles/chat_server; runtime contract: postmodern-server/SEED_DEPLOY_ANSIBLE_SPEC.md.
 
 # --- image ---
@@ -43,13 +46,31 @@ seed_chat_db_url_effective: >-
      else seed_chat_db_url }}
 
 # --- seeding knobs ---
-seed_small: true                      # SEED_SMALL=1 → the fast/small preset (recommended first)
+seed_small: false                     # false → SEED_SMALL=0 = the full scale world (auto-seed default).
+                                      # true → the fast/small preset (good for a manual smoke run).
+# Optional SEED_* size overrides rendered verbatim into seed.env (e.g. a much
+# larger world): {SEED_BOARDS: 30, SEED_POSTS: 60, SEED_CROWD: 400, ...}. Scale by
+# WIDTH (rooms/boards/posts/users); keep any single room's events well under the
+# fold ceiling (~12k). Empty = the built-in scale defaults.
+seed_env_extra: {}
 # seed_chat_bot_claim_secret, seed_pw come from the vault (see vault-seed.yml.example).
 
 # ACCOUNT_DB_URL intentionally UNSET — no irl badges (the accounts repo is not in
 # the image). Everything else seeds fully. Do NOT add ACCOUNT_DB_URL here.
 
-# Stage config only (render + daemon-reload; never auto-start). This role NEVER
-# starts the seed — it is one-shot, triggered by the operator. true: also pull the
-# image now so the first manual run is instant.
+# --- auto-seed on boot ---
+# Enable a trigger unit that, on boot, waits for the greasewood overlay interface
+# then seeds ONCE. Set false to keep it purely manual (systemctl start pm-seed).
+seed_autostart: true
+seed_autostart_delay: 180             # seconds to settle after the overlay is up, before seeding
+seed_mesh_iface_prefix: "gw-"         # the greasewood overlay interface name prefix to wait for
+seed_iface_wait_secs: 600             # give up waiting for a gw-* interface after this long
+# Run at most ONCE per node: the world accumulates, so re-seeding every reboot
+# would pile on duplicates. A marker file under seed_state_dir guards it. Set false
+# to seed on EVERY boot (rarely what you want).
+seed_autostart_once: true
+seed_state_dir: /var/lib/pm-seed
+
+# Stage config only (render + daemon-reload; the trigger unit — not pm-seed — is
+# what gets enabled). Also pulls the image so the first run is instant.
 seed_deploy_run: true

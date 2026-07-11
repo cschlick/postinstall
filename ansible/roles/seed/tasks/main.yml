@@ -1,7 +1,8 @@
 ---
-# Deploy the one-shot seeder as a pinned GHCR container via a podman quadlet that
-# is NOT wired to any target (never runs on boot). Trigger: systemctl start pm-seed.
-# Mirrors chat_server minus the service bits (no port, no start, no health gate).
+# Deploy the seeder as a pinned GHCR container via a podman quadlet. pm-seed itself
+# is NOT wired to a target; an enabled trigger unit (pm-seed-autostart) waits for
+# the overlay and fires it once on boot. Manual: systemctl start pm-seed.
+# Mirrors chat_server minus the service bits (no port, no health gate).
 
 - name: Assert required deploy config is set
   ansible.builtin.assert:
@@ -37,6 +38,7 @@
     - /etc/postmodern
     - /etc/containers
     - /etc/containers/systemd
+    - "{{ seed_state_dir }}"          # holds the run-once marker for auto-seed
 
 # GHCR pull secret (PRIVATE package).
 - name: Install the GHCR pull-secret authfile
@@ -77,10 +79,42 @@
   ansible.builtin.systemd_service:
     daemon_reload: true
 
-# Pre-pull so the first `systemctl start pm-seed` is instant. NEVER start it here.
+# Pre-pull so the first run (auto or manual) is instant. NEVER start pm-seed here.
 - name: Pull the seed image
   ansible.builtin.command: "podman pull {{ seed_image }}"
   environment:
     REGISTRY_AUTH_FILE: "{{ seed_authfile }}"
   changed_when: false
   when: seed_deploy_run
+
+# --- auto-seed trigger ---
+# A real systemd unit (not a quadlet): waits for the overlay, settles, then fires
+# pm-seed ONCE. Enabled so it runs on boot; also kicked now (--no-block) so the
+# CURRENT deploy seeds without blocking the converge.
+- name: Install the pm-seed-autostart trigger unit
+  ansible.builtin.template:
+    src: pm-seed-autostart.service.j2
+    dest: /etc/systemd/system/pm-seed-autostart.service
+    owner: root
+    group: root
+    mode: "0644"
+  when: seed_autostart
+  register: seed_autostart_unit
+
+- name: Reload systemd for the trigger unit
+  ansible.builtin.systemd_service:
+    daemon_reload: true
+  when: seed_autostart and seed_autostart_unit is changed
+
+- name: Enable the auto-seed trigger (runs on every boot; guarded to seed once)
+  ansible.builtin.systemd_service:
+    name: pm-seed-autostart.service
+    enabled: true
+  when: seed_autostart
+
+# Kick it for THIS deploy without blocking ansible: it waits for gw-* + settles +
+# seeds in the background. The run-once marker keeps a later reboot from re-seeding.
+- name: Start the auto-seed trigger for this deploy (non-blocking)
+  ansible.builtin.command: systemctl start --no-block pm-seed-autostart.service
+  changed_when: false
+  when: seed_autostart and seed_deploy_run

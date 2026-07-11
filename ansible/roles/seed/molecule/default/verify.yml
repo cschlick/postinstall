@@ -43,10 +43,31 @@
           - "'CHAT_WS_URL=ws://chat01.pm.internal:8765' in e"
           - "'ACCOUNT_WS_URL=ws://accounts01.pm.internal:8766' in e"
           - "'CHAT_DB_URL=postgresql://pm@db01.pm.internal:5432/chat?sslmode=verify-full' in e"
-          - "'SEED_SMALL=1' in e"
+          - "'SEED_SMALL=0' in e"
 
     - name: pm-seed.service exists but is NOT enabled (never runs on boot)
       ansible.builtin.command: systemctl is-enabled pm-seed.service
       register: en
       changed_when: false
       failed_when: en.stdout == "enabled"
+
+    - name: Read the auto-seed trigger unit
+      ansible.builtin.slurp:
+        src: /etc/systemd/system/pm-seed-autostart.service
+      register: trig
+
+    - name: Assert the trigger unit waits for the overlay + run-once guard + fires pm-seed
+      vars:
+        u: "{{ trig.content | b64decode }}"
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          - "'ConditionPathExists=!/var/lib/pm-seed/.seeded' in u"
+          - "'systemctl start --wait pm-seed.service' in u"
+          - "'/sys/class/net/' in u"
+
+    - name: The auto-seed trigger IS enabled (boot-wired — unlike pm-seed itself)
+      ansible.builtin.command: systemctl is-enabled pm-seed-autostart.service
+      register: aen
+      changed_when: false
+      failed_when: aen.stdout != "enabled"
