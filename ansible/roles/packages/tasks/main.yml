@@ -19,6 +19,17 @@
     update_cache: true
   when: packages_install | length > 0
 
+# uv isn't packaged for Debian; install it globally via pipx (just installed
+# above) from PyPI. --global + PIPX_GLOBAL_BIN_DIR put `uv`/`uvx` in /usr/local/bin
+# for every user. Idempotent via the creates guard.
+- name: Install uv globally via pipx
+  ansible.builtin.command:
+    cmd: pipx install --global uv
+    creates: /usr/local/bin/uv
+  environment:
+    PIPX_GLOBAL_BIN_DIR: /usr/local/bin
+  when: packages_uv | bool
+
 # state: absent + purge tolerates entries that aren't installed (apt acts only
 # on the ones present), mirroring the script's one-at-a-time purge.
 - name: Purge unwanted packages

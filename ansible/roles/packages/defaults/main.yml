@@ -9,6 +9,15 @@ packages_install:
   - dnsutils
   - tcpdump
   - cracklib-runtime
+  # Modern Python tooling: pipx for installing CLI apps in isolated venvs (so
+  # `pip install` never touches the PEP 668 system Python). uv is NOT packaged
+  # for Debian, so it's installed via pipx below (packages_uv).
+  - pipx
+
+# uv (Astral's fast pip/venv/tooling manager) isn't in Debian apt, so install it
+# with pipx from PyPI — reachable over IPv6, unlike uv's GitHub standalone
+# installer (the mesh-only boxes have no IPv4). Set false to skip.
+packages_uv: true
 
 # Packages to purge: ufw (replaced by nftables) plus the build toolchain, GPU/X
 # graphics stack, audio, docs, recon tooling and desktop/locale cruft that ships
