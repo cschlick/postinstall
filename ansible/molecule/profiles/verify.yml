@@ -39,6 +39,10 @@
           - v_nft.index('iifname "gw-door" drop') < v_nft.index('iifname "gw-*"')
           - "'AllowUsers pmuser' in v_sshd"
           - "'PermitRootLogin no' in v_sshd"
+          # WireGuard underlay ports open on BOTH families (underlay may be v4 or
+          # v6) — same on every profile so any node can host the mesh/anchor.
+          - "'ip6 saddr ::/0 udp dport { 51900, 51901 } ct state new accept' in v_nft"
+          - "'ip saddr 0.0.0.0/0 udp dport { 51900, 51901 } ct state new accept' in v_nft"
 
 - name: Verify bastion profile
   hosts: bastion
@@ -48,14 +52,14 @@
       ansible.builtin.assert:
         quiet: true
         that:
-          # Public SSH: IPv6 yes, IPv4 no.
+          # Public SSH over BOTH families (v4 + v6) — key-only.
           - "'ip6 saddr ::/0 tcp dport 22 ct state new accept' in v_nft"
-          - "'ip saddr 0.0.0.0/0' not in v_nft"
-          # Key-only, ProxyJump served, IPv6-only listener.
+          - "'ip saddr 0.0.0.0/0 tcp dport 22 ct state new accept' in v_nft"
+          # Key-only, ProxyJump served, dual-stack listener.
           - "'PasswordAuthentication no' in v_sshd"
           - "'AllowTcpForwarding local' in v_sshd"
           - "'PermitOpen *:' in v_sshd"
-          - "'AddressFamily inet6' in v_sshd"
+          - "'AddressFamily any' in v_sshd"
           # Image-residue accounts purged.
           - "'linuxuser:' not in v_passwd"
           - "'\nuser:' not in v_passwd"
@@ -103,9 +107,10 @@
         quiet: true
         that:
           # NO public SSH at all — the overlay rule (asserted for all) is the
-          # only way in.
+          # only way in. (The WG underlay ports ARE open on v4+v6 like every
+          # node, so scope the v4 check to SSH rather than a blanket match.)
           - "'ip6 saddr ::/0 tcp dport 22' not in v_nft"
-          - "'ip saddr 0.0.0.0/0' not in v_nft"
+          - "'ip saddr 0.0.0.0/0 tcp dport 22' not in v_nft"
           # Fully locked down sshd.
           - "'DisableForwarding yes' in v_sshd"
           - "'AllowTcpForwarding no' in v_sshd"

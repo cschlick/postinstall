@@ -81,8 +81,8 @@ table inet filter {
         # bind ever regressed. (The enrollment port, 51903 on gw-door, is
         # handled by the early gw-door dispatch above.)
         # Same on every node so any node can become the hub with no rule change.
-        ip6 saddr ::/0      udp dport { 51900, 51901 } ct state new accept
-        ip  saddr 0.0.0.0/0 udp dport { 51900, 51901 } ct state new accept
+        ip6 saddr ::/0 udp dport { 51900, 51901 } ct state new accept
+        ip saddr 0.0.0.0/0 udp dport { 51900, 51901 } ct state new accept
         iifname "{{ nftables_mesh_iifname }}" tcp dport 51902 ct state new accept
 
         # Log anything that reaches the end of the chain before the default
