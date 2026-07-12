@@ -36,9 +36,10 @@ account_quadlet: /etc/containers/systemd/account.container
 # --- network / bind ------------------------------------------------------------
 # Network=host: the container uses the host stack, so it reaches a REMOTE Postgres
 # (mesh gw-* address OR a managed endpoint) with no container-network plumbing, and
-# :8766 is governed by the host's nftables directly (no podman NAT layer). The port
-# OPENING is a firewall concern — set it in group_vars/account/ (public via
-# nftables_extra_tcp_ports, or mesh-only via nftables_mesh_tcp_ports if behind an LB).
+# :8766 is governed by the host's nftables directly (no podman NAT layer). To expose
+# it PUBLICLY set nftables_extra_tcp_ports: [8766] in group_vars/account/; for a
+# mesh-only plane (behind an LB) it needs no rule — the overlay is admitted
+# wholesale (iifname "gw-*" accept) and greasewood's grant table gates it.
 account_port: 8766
 
 # --- required runtime config ---------------------------------------------------

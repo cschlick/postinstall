@@ -8,7 +8,7 @@
 # address, mutual TLS via the mesh CA (gw cert-request --profile nats).
 nats_enabled: true
 
-# Open the NATS ports on the overlay interface ONLY (mesh-only — deliberately
-# not nftables_extra_tcp_ports, which is public). Binding to the overlay
-# address does not open the port by itself.
-nftables_mesh_tcp_ports: [4222, 8222]
+# NATS (4222/8222) is mesh-only: it binds the overlay address, and the host
+# firewall admits the whole overlay (iifname "gw-*" accept) — no per-port rule.
+# Which mesh peers may actually reach 4222/8222 is enforced by greasewood's grant
+# table + NATS's own mutual TLS, not the host firewall.

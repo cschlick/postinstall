@@ -32,17 +32,17 @@
           - "'pmuser:' in v_passwd"
           - "'root:!:' in v_shadow"
           - 'v_sudoers == "pmuser ALL=(ALL) NOPASSWD: ALL\n"'
-          - "'iifname \"gw-*\" tcp dport 22 ct state new accept' in v_nft"
-          # gw-door is dispatched (51903 accept, then drop) BEFORE any gw-*
-          # rule, so the glob accepts can never apply to the enrollment iface.
-          - "'iifname \"gw-door\" drop' in v_nft"
-          - v_nft.index('iifname "gw-door" drop') < v_nft.index('iifname "gw-*"')
           - "'AllowUsers pmuser' in v_sshd"
           - "'PermitRootLogin no' in v_sshd"
-          # WireGuard underlay ports open on BOTH families (underlay may be v4 or
-          # v6) — same on every profile so any node can host the mesh/anchor.
-          - "'ip6 saddr ::/0 udp dport { 51900, 51901 } ct state new accept' in v_nft"
-          - "'ip saddr 0.0.0.0/0 udp dport { 51900, 51901 } ct state new accept' in v_nft"
+          # greasewood firewall: exactly the two WG underlay ports + admit the
+          # overlay wholesale. greasewood's OWN table filters the overlay ports, so
+          # the host firewall has NO per-service / SSH-over-mesh / door /
+          # control-plane mesh rules — assert those legacy rules are gone.
+          - "'udp dport 51900 accept' in v_nft"
+          - "'udp dport 51901 accept' in v_nft"
+          - "'iifname \"gw-*\" accept' in v_nft"
+          - "'gw-door' not in v_nft"
+          - "'dport 51902' not in v_nft"
 
 - name: Verify bastion profile
   hosts: bastion
@@ -130,10 +130,10 @@
           # Base gw_node behaviour intact.
           - "'ip6 saddr ::/0 tcp dport 22' not in v_nft"
           - "'DisableForwarding yes' in v_sshd"
-          # NATS ports opened on the overlay interface ONLY.
-          - "'iifname \"gw-*\" tcp dport 4222 ct state new accept' in v_nft"
-          - "'iifname \"gw-*\" tcp dport 8222 ct state new accept' in v_nft"
-          - "'dport 4222 ct state new accept' not in (v_nft | replace('iifname \"gw-*\" tcp dport 4222 ct state new accept', ''))"
+          # NATS ports are NOT opened per-port — the overlay is admitted wholesale
+          # (asserted in the shared block); no 4222/8222 rule in the host firewall.
+          - "'dport 4222' not in v_nft"
+          - "'dport 8222' not in v_nft"
 
     - name: Read nats-server.conf
       ansible.builtin.slurp:
@@ -199,9 +199,8 @@
           # Base gw_node behaviour intact.
           - "'ip6 saddr ::/0 tcp dport 22' not in v_nft"
           - "'DisableForwarding yes' in v_sshd"
-          # Postgres port opened on the overlay interface ONLY.
-          - "'iifname \"gw-*\" tcp dport 5432 ct state new accept' in v_nft"
-          - "'dport 5432 ct state new accept' not in (v_nft | replace('iifname \"gw-*\" tcp dport 5432 ct state new accept', ''))"
+          # Postgres 5432 is NOT opened per-port — admitted via the overlay accept.
+          - "'dport 5432' not in v_nft"
 
     - name: Read the postgres config drop-in and pg_hba
       ansible.builtin.slurp:

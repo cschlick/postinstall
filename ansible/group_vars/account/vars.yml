@@ -53,8 +53,8 @@ account_db_tls_files: []
 
 # --- firewall: the account server is CLIENT-FACING on :8766 --------------------
 # Open it to the public internet (IPv4+IPv6). If you front it with a load balancer
-# / TLS proxy instead, drop this and use nftables_mesh_tcp_ports: [8766] so only
-# the LB (on the mesh) can reach it.
+# / TLS proxy on the mesh instead, drop this — the overlay is admitted wholesale
+# (iifname "gw-*" accept) and greasewood's grant table gates who reaches :8766.
 # NOTE: group_vars lists don't merge — a host that also stacks nats/postgres must
 # list every port it needs in a host_vars override.
 nftables_extra_tcp_ports: [8766]

@@ -1,9 +1,9 @@
 ---
 # Postgres listens ONLY on this address — the node's mesh overlay address,
 # discovered exactly like the nats role does (first gw-* interface that isn't
-# the enrollment door, link-locals rejected). The firewall opening comes from
-# nftables_mesh_tcp_ports in group_vars/postgres.yml, NOT from binding alone.
-# Override per-host for multi-mesh boxes or tests.
+# the enrollment door, link-locals rejected). The host firewall admits the whole
+# overlay (iifname "gw-*" accept); greasewood's grant table + the mTLS-only pg_hba
+# gate who actually reaches it. Override per-host for multi-mesh boxes or tests.
 postgres_mesh_iface: "{{ ansible_facts.interfaces | select('match', '^gw-') | reject('equalto', 'gw-door') | first }}"
 postgres_listen_addr: "{{ (ansible_facts[postgres_mesh_iface | replace('-', '_')].ipv6 | rejectattr('address', 'match', '^fe80') | first).address }}"
 

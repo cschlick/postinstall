@@ -8,11 +8,10 @@
 # mutual TLS via the mesh CA (gw cert-request --profile postgres).
 postgres_enabled: true
 
-# Open 5432 on the overlay interface ONLY (mesh-only — deliberately not the
-# public nftables_extra_tcp_ports). NOTE: group_vars don't merge lists — a
-# host stacking BOTH nats and postgres needs a host_vars override listing
-# every mesh port, e.g. nftables_mesh_tcp_ports: [4222, 8222, 5432].
-nftables_mesh_tcp_ports: [5432]
+# Postgres (5432) is mesh-only: it binds the overlay address, and the host
+# firewall admits the whole overlay (iifname "gw-*" accept) — no per-port rule.
+# Reachability is enforced by greasewood's grant table + the mTLS-only pg_hba,
+# not the host firewall.
 
 # The postmodern plane databases a DB box provisions for REMOTE mesh consumers
 # (each: a login role + an owned, separate database — unlinkability, so account

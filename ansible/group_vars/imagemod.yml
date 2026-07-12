@@ -9,10 +9,10 @@ imagemod_image_tag: "latest"
 imagemod_pull_always: true
 imagemod_ghcr_user: "cschlick"
 
-# firewall: the scan API on :8000, MESH-only (the chat plane reaches it over gw-*).
-# NOTE: group_vars lists don't merge — a host also stacking another mesh service
-# must list every mesh port it needs in a host_vars override.
-nftables_mesh_tcp_ports: [8000]
+# firewall: the scan API (:8000) is mesh-only — it binds the overlay address, and
+# the host firewall admits the whole overlay (iifname "gw-*" accept), so no
+# per-port rule. Which peers may reach it is enforced by greasewood's grant table
+# + the Bearer API key, not the host firewall.
 
 # Optional model/perf tuning — defaults live in the image (postmodern-imagemod
 # README § Configuration). e.g.:

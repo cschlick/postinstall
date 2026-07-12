@@ -99,15 +99,20 @@ ProxyJump only forwards the TCP connection — your keys never touch the
 bastion (agent forwarding is off everywhere).
 
 **Service profiles stack on the exposure profiles**: `nats` adds a mesh-only
-NATS JetStream server (mutual TLS via the mesh CA, ports 4222/8222 open on
-the overlay interface only); `postgres` adds a mesh-only PostgreSQL the same
-way (mTLS-only pg_hba, port 5432); `account` runs the postmodern account plane
-as a GHCR **container** (podman quadlet) against a **remote** Postgres, client-
-facing on :8766. Put the host in **both** its base group and the service group
-in the inventory, or e.g. `NATS=1 GW_NODE=1 bash apply.sh` locally. Stacking
-several service profiles on ONE host needs a host_vars override listing all
-their mesh ports (group_vars lists don't merge): `nftables_mesh_tcp_ports:
-[4222, 8222, 5432]`.
+NATS JetStream server (mutual TLS via the mesh CA); `postgres` adds a mesh-only
+PostgreSQL the same way (mTLS-only pg_hba, port 5432); `account` runs the
+postmodern account plane as a GHCR **container** (podman quadlet) against a
+**remote** Postgres, client-facing on :8766. Put the host in **both** its base
+group and the service group in the inventory, or e.g. `NATS=1 GW_NODE=1 bash
+apply.sh` locally.
+
+Mesh services need **no host-firewall port rules**: the host firewall admits the
+whole overlay (`iifname "gw-*" accept`) and greasewood's own nftables table
+enforces which overlay ports each peer may reach (its grant table), on top of
+each service's mTLS/keys. Only **public** exposure needs a rule
+(`nftables_extra_tcp_ports`, e.g. the account plane's `:8766` or flutter's
+`:8080`). The host firewall's greasewood section is just: accept UDP 51900/51901
+(the WireGuard underlay ports) and `iifname "gw-*" accept`.
 
 Unlike the native mesh infra above, `account` is an **application workload** —
 it runs the CI-published image (`ghcr.io/postmodern-you/postmodern-accounts:<tag>`)
@@ -177,8 +182,8 @@ Applied in this order (see `site.yml`). Tag = role name. Run subsets with
 | **packages** | Installs a base set, purges desktop/X/build cruft + ufw + fail2ban; disables apt Recommends. |
 | **greasewood** | Installs the greasewood mesh CLI into `/opt/greasewood` (force-reinstalled from GitLab each apply → always current), symlinks `gw`, installs systemd units (daemon starts itself once a config appears). |
 | **claude_code** | *(dev profile only)* Installs Claude Code for pmuser via the native installer; re-run each apply so it stays current. Symlinks `claude` into `/usr/local/bin`. |
-| **nats** | *(nats profile only)* NATS JetStream bound to the mesh overlay address only, mutual TLS via the mesh CA (`gw cert-request --profile nats`, auto-renewed by the gw daemon). Firewall opens 4222/8222 on the overlay interface only. |
-| **postgres** | *(postgres profile only)* PostgreSQL bound to the mesh overlay address only; pg_hba is mTLS-only (`hostssl` + `clientcert=verify-ca`, no plain-TCP path). Cert via `gw cert-request --profile postgres`. Provisions databases+roles for remote consumers via `postgres_databases`. Socket-only mode (`postgres_socket_only`) for a local-only DB. Firewall opens 5432 on the overlay interface only. |
+| **nats** | *(nats profile only)* NATS JetStream bound to the mesh overlay address only, mutual TLS via the mesh CA (`gw cert-request --profile nats`, auto-renewed by the gw daemon). No host-firewall port rule — reachable over the admitted overlay, gated by greasewood's grant table + mTLS. |
+| **postgres** | *(postgres profile only)* PostgreSQL bound to the mesh overlay address only; pg_hba is mTLS-only (`hostssl` + `clientcert=verify-ca`, no plain-TCP path). Cert via `gw cert-request --profile postgres`. Provisions databases+roles for remote consumers via `postgres_databases`. Socket-only mode (`postgres_socket_only`) for a local-only DB. No host-firewall port rule (admitted overlay + grant table). |
 | **mesh_client** | *(included by plane roles)* Mints a postmodern mesh CLIENT identity (`client.*` + `ca.crt` under `/etc/pki/pm`) from the mesh CA for any pm workload connecting out over mTLS (e.g. account→postgres). The pm-client profile is rendered here and handed to `gw` by path, so greasewood stays generic. |
 | **account_server** | *(account profile only)* The postmodern account plane as a pinned GHCR container via a podman quadlet (`Network=host`, `/healthz` deploy gate). DB is local socket (`account_db_local`), a remote mesh host (`account_db_host`, via mesh_client), or a managed DSN (`account_db_url`). Secrets from ansible-vault. Runtime contract: `postmodern-accounts/CONTAINER.md`. |
 | **chat_server** | *(chat profile only)* The postmodern chat plane as a pinned GHCR container via a podman quadlet (`Network=host`, `:8765`, `/healthz` deploy gate). Backbone: NATS + Postgres (same three DB shapes as account) + object store (R2). Holds only the PUBLIC cross-plane keys plus its own vaulted secrets. Runtime contract: `postmodern-server/CONTAINER.md`. |

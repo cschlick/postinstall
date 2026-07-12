@@ -39,25 +39,14 @@ table inet filter {
             nd-router-advert         # router sends network prefix and gateway info to hosts
         } accept
 
-        # gw-door (transient enrollment interface) matches the gw-* glob used
-        # below, but must carry ONLY the enrollment exchange: accept its one
-        # port here, then drop everything else arriving on it — BEFORE any
-        # gw-* rule can match. (established/related + ICMP above still apply.)
-        iifname "gw-door" tcp dport 51903 ct state new accept
-        iifname "gw-door" drop
-
-        # SSH always reachable over the VPN overlay — the gw_node profile relies
-        # on this as its only path in.
-        iifname "{{ nftables_mesh_iifname }}" tcp dport {{ nftables_ssh_port }} ct state new accept
 {% if nftables_ssh_public %}
-        # Default profile (nftables_ssh_public): also reachable from the public
-        # internet — IPv6 only, by design. The gw_node profile sets this false to
-        # restrict SSH to the overlay above. No rate limit: an accept-side limiter
-        # fails INTO the drop policy past the threshold, locking out bursts.
+        # Public SSH — IPv6, and IPv4 too when nftables_ssh_ipv4 (bastion/dev).
+        # The gw_node profile sets nftables_ssh_public false; SSH is then reached
+        # over the overlay, admitted by the gw-* rule below. No rate limit: an
+        # accept-side limiter fails INTO the drop policy past the threshold,
+        # locking out bursts.
         ip6 saddr ::/0 tcp dport {{ nftables_ssh_port }} ct state new accept
 {% if nftables_ssh_ipv4 %}
-        # dev profile: SSH from IPv4 too (sshd listens on 0.0.0.0 via
-        # ssh_listen_ipv4).
         ip saddr 0.0.0.0/0 tcp dport {{ nftables_ssh_port }} ct state new accept
 {% endif %}
 {% endif %}
@@ -66,24 +55,18 @@ table inet filter {
         # Extra allowed inbound TCP (IPv4 and IPv6, public).
         tcp dport {{ port }} ct state new accept
 {% endfor %}
-{% for port in nftables_mesh_tcp_ports %}
-        # Mesh-only service port: reachable ONLY over the overlay.
-        iifname "{{ nftables_mesh_iifname }}" tcp dport {{ port }} ct state new accept
-{% endfor %}
 
-        # greasewood + wireguard. The two WireGuard UDP ports face the underlay
-        # (they arrive on the physical NIC), so they accept from anywhere — over
-        # BOTH families: greasewood's overlay is v6-only but the underlay may be
-        # v4 or v6, so a peer (or the anchor's door) can be dialed over IPv4. On a
-        # v6-only host the v4 rule simply never matches (no public v4 address).
-        # The control plane binds only to the overlay + loopback and is scoped to
-        # the mesh interfaces — nothing reaches it off the underlay even if a
-        # bind ever regressed. (The enrollment port, 51903 on gw-door, is
-        # handled by the early gw-door dispatch above.)
-        # Same on every node so any node can become the hub with no rule change.
-        ip6 saddr ::/0 udp dport { 51900, 51901 } ct state new accept
-        ip saddr 0.0.0.0/0 udp dport { 51900, 51901 } ct state new accept
-        iifname "{{ nftables_mesh_iifname }}" tcp dport 51902 ct state new accept
+        # greasewood mesh. The two WireGuard UDP ports face the underlay (physical
+        # NIC, any source/family — the overlay is v6-only but the underlay may be
+        # v4 or v6). Then admit the overlay wholesale: greasewood's OWN table does
+        # ALL the overlay filtering — it scopes the control plane, locks the
+        # transient enrollment interface to its one port, and enforces the grant
+        # table's per-service ports. The host firewall only admits the overlay
+        # (greasewood can tighten it, never open it), so there are NO per-service,
+        # per-port, SSH, enrollment, or control-plane mesh rules here.
+        udp dport 51900 accept
+        udp dport 51901 accept
+        iifname "{{ nftables_mesh_iifname }}" accept
 
         # Log anything that reaches the end of the chain before the default
         # drop policy takes it. Rate-limited so a flood can't fill the journal;
