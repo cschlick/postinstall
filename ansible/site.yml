@@ -57,6 +57,12 @@
     - role: flutter
       when: flutter_server_enabled | default(false)
       tags: [flutter]
+    # imagemod profile only (group_vars/imagemod.yml; stacks on gw_node). The
+    # image-moderation ML service as a GHCR container; the chat plane calls it
+    # over the mesh (:8000, overlay-only).
+    - role: imagemod
+      when: imagemod_server_enabled | default(false)
+      tags: [imagemod]
     - role: auditd
       tags: [auditd]
     - role: pwquality

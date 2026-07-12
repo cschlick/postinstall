@@ -1,0 +1,38 @@
+{# Managed by Ansible (roles/imagemod). Quadlet → systemd generates
+   imagemod.service on `systemctl daemon-reload`. Runtime contract:
+   postmodern-imagemod/API.md + README. #}
+[Unit]
+Description=postmodern image-moderation service (ML scan API, container)
+Documentation=https://github.com/postmodern-you/postmodern-imagemod
+After=network-online.target
+Wants=network-online.target
+
+[Container]
+Image={{ imagemod_image }}
+# Private GHCR package → podman finds the read:packages authfile via
+# REGISTRY_AUTH_FILE in [Service] below.
+# newer = re-check the registry on each (re)start (for a mutable tag like
+# :latest); missing = pull only when absent (immutable version tags).
+Pull={{ 'newer' if imagemod_pull_always else 'missing' }}
+# host stack: gunicorn binds :{{ imagemod_port }} on the host; the host nftables
+# opens it on the mesh interface ONLY (group_vars/imagemod.yml — the chat plane
+# reaches it over the overlay). No container networking.
+Network=host
+EnvironmentFile={{ imagemod_env_file }}
+# Persist the downloaded ML model weights across restarts (GBs from HuggingFace on
+# first boot). The image runs as root, so these host dirs map to the container's
+# /root cache paths (its declared VOLUMEs).
+Volume={{ imagemod_cache_dir }}/huggingface:/root/.cache/huggingface
+Volume={{ imagemod_cache_dir }}/insightface:/root/.insightface
+
+[Service]
+# Give podman the GHCR pull-secret (quadlet has no [Container] AuthFile key).
+Environment=REGISTRY_AUTH_FILE={{ imagemod_authfile }}
+Restart=on-failure
+RestartSec=10
+# first boot pulls a LARGE image and downloads model weights — give it wide room
+# before systemd calls the start failed.
+TimeoutStartSec=900
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,21 @@
+---
+# The imagemod (image-moderation) service profile — STACKS on gw_node: the chat
+# plane calls it over the mesh (POST /scan). It LISTENS on :8000 over the overlay
+# ONLY (no public exposure), so open that port on the mesh interface. Config, NO
+# secrets (the API key + GHCR token live in ansible/vault-imagemod.yml).
+imagemod_server_enabled: true
+
+imagemod_image_tag: "latest"
+imagemod_pull_always: true
+imagemod_ghcr_user: "cschlick"
+
+# firewall: the scan API on :8000, MESH-only (the chat plane reaches it over gw-*).
+# NOTE: group_vars lists don't merge — a host also stacking another mesh service
+# must list every mesh port it needs in a host_vars override.
+nftables_mesh_tcp_ports: [8000]
+
+# Optional model/perf tuning — defaults live in the image (postmodern-imagemod
+# README § Configuration). e.g.:
+# imagemod_env_extra:
+#   PIPELINE_WORKERS: 2
+#   MAX_FILE_BYTES: 10485760

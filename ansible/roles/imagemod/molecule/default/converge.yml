@@ -1,0 +1,17 @@
+---
+- name: Converge
+  hosts: all
+  become: true
+  vars:
+    # Render-only: the private GHCR image can't be pulled in CI (and it's a
+    # multi-GB ML image), so stage config without pull/start/health.
+    imagemod_deploy_run: false
+    imagemod_image_repo: "localhost/imagemod-standin"
+    imagemod_image_tag: "test"
+    imagemod_ghcr_user: "test-bot"
+    imagemod_ghcr_token: "ghp_testtoken"
+    imagemod_api_key: "test-api-key"
+    imagemod_env_extra:
+      PIPELINE_WORKERS: 2
+  roles:
+    - role: imagemod

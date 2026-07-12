@@ -1,0 +1,109 @@
+---
+# Deploy the image-moderation service as a pinned GHCR container via a podman
+# quadlet. Network=host; gunicorn binds :8000 on the host, opened on the mesh
+# interface only (group_vars/imagemod.yml). Heavyweight ML image — first boot pulls
+# a large image and downloads model weights (persisted to a host cache dir). No DB,
+# no mesh client cert; the only secret is the Bearer API key + the GHCR pull token.
+
+- name: Assert required deploy config is set
+  ansible.builtin.assert:
+    quiet: true
+    that:
+      - imagemod_image_tag | length > 0
+      - imagemod_ghcr_user | length > 0
+      - imagemod_ghcr_token | default('') | length > 0
+      - imagemod_api_key | default('') | length > 0
+    fail_msg: >-
+      imagemod needs (from group_vars/imagemod + the vault): imagemod_image_tag,
+      imagemod_ghcr_user, imagemod_ghcr_token, imagemod_api_key.
+
+- name: Install podman (application-workload runtime)
+  ansible.builtin.apt:
+    name: podman
+    state: present
+    update_cache: true
+
+- name: Ensure config + quadlet + model-cache directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  loop:
+    - /etc/postmodern
+    - /etc/containers
+    - /etc/containers/systemd
+    - "{{ imagemod_cache_dir }}/huggingface"
+    - "{{ imagemod_cache_dir }}/insightface"
+
+# --- GHCR pull secret (the package is PRIVATE) ---------------------------------
+- name: Install the GHCR pull-secret authfile
+  ansible.builtin.template:
+    src: pm-ghcr-auth.json.j2
+    dest: "{{ imagemod_authfile }}"
+    owner: root
+    group: root
+    mode: "0600"
+  no_log: true
+
+# --- env + quadlet -------------------------------------------------------------
+- name: Render the imagemod env file
+  ansible.builtin.template:
+    src: imagemod.env.j2
+    dest: "{{ imagemod_env_file }}"
+    owner: root
+    group: root
+    mode: "0600"          # read only by root (podman injects it into the container)
+  no_log: true
+  notify: Restart imagemod
+
+- name: Install the imagemod.container quadlet
+  ansible.builtin.template:
+    src: imagemod.container.j2
+    dest: "{{ imagemod_quadlet }}"
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - Reload systemd
+    - Restart imagemod
+
+- name: Reload systemd so the quadlet generates imagemod.service
+  ansible.builtin.systemd_service:
+    daemon_reload: true
+
+# --- mutable-tag refresh: pull a newer image each apply, restart iff changed --
+- name: Record the current image id
+  ansible.builtin.command: "podman image inspect --format '{{ '{{' }}.Id{{ '}}' }}' {{ imagemod_image }}"
+  register: imagemod_img_before
+  changed_when: false
+  failed_when: false
+  when: imagemod_deploy_run and imagemod_pull_always
+
+- name: Pull the latest image
+  ansible.builtin.command: "podman pull {{ imagemod_image }}"
+  environment:
+    REGISTRY_AUTH_FILE: "{{ imagemod_authfile }}"
+  register: imagemod_pull
+  changed_when: imagemod_img_before.stdout | default('') not in imagemod_pull.stdout
+  notify: Restart imagemod
+  when: imagemod_deploy_run and imagemod_pull_always
+
+- name: Start the imagemod service
+  ansible.builtin.systemd_service:
+    name: imagemod.service
+    state: started
+  when: imagemod_deploy_run
+
+# --- deploy gate: /health is 200 once the models have loaded -------------------
+- name: Wait for imagemod to become healthy (first boot downloads models)
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ imagemod_port }}/health"
+    status_code: 200
+  register: imagemod_health
+  retries: "{{ imagemod_health_retries }}"
+  delay: "{{ imagemod_health_delay }}"
+  until: imagemod_health.status == 200
+  changed_when: false
+  when: imagemod_deploy_run

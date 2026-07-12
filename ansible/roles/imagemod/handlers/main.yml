@@ -1,0 +1,15 @@
+---
+- name: Reload systemd
+  ansible.builtin.systemd_service:
+    daemon_reload: true
+
+# Restart the quadlet-generated unit. daemon_reload first so a changed
+# imagemod.container is regenerated before the restart picks it up. Guarded on
+# imagemod_deploy_run so a config-only staging run (molecule) doesn't start an
+# unpulled image.
+- name: Restart imagemod
+  ansible.builtin.systemd_service:
+    name: imagemod.service
+    state: restarted
+    daemon_reload: true
+  when: imagemod_deploy_run | default(true)

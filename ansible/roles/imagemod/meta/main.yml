@@ -1,0 +1,12 @@
+---
+galaxy_info:
+  role_name: imagemod
+  author: cschlick
+  description: The postmodern image-moderation ML service as a GHCR container (podman quadlet)
+  license: MIT
+  min_ansible_version: "2.15"
+  platforms:
+    - name: Debian
+      versions:
+        - trixie
+dependencies: []

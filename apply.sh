@@ -28,6 +28,9 @@
 #   FLUTTER=1 bash apply.sh  -> flutter (web client) service profile (stacks on
 #                               gw_node): the Flutter web build via nginx (GHCR
 #                               container), public on :8080. Needs the vault (GHCR token).
+#   IMAGEMOD=1 bash apply.sh -> imagemod service profile (stacks on gw_node): the
+#                               image-moderation ML API (GHCR container), mesh-only
+#                               on :8000; the chat plane calls it. Needs the vault.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -84,6 +87,8 @@ require_vault "${CHAT:-0}" vault-chat.yml
 require_vault "${SEED:-0}" vault-seed.yml
 [ "${FLUTTER:-0}" = 1 ] && EXTRA+=(-e @"$ROOT/ansible/group_vars/flutter.yml")
 require_vault "${FLUTTER:-0}" vault-flutter.yml
+[ "${IMAGEMOD:-0}" = 1 ] && EXTRA+=(-e @"$ROOT/ansible/group_vars/imagemod.yml")
+require_vault "${IMAGEMOD:-0}" vault-imagemod.yml
 # Deploy-time extra vars (pmdeploy --var / --local-db writes this). Lives outside
 # the repo so it survives ansible-pull's checkout reset. e.g. a local-DB box:
 #   postgres_socket_only: true  /  account_db_local: true

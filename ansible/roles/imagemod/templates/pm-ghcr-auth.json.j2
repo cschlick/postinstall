@@ -1,0 +1,9 @@
+{# Managed by Ansible (roles/imagemod). GHCR pull secret — the package is private,
+   so podman needs read:packages to pull the image. 0600 root. #}
+{
+  "auths": {
+    "{{ imagemod_ghcr_registry }}": {
+      "auth": "{{ (imagemod_ghcr_user ~ ':' ~ imagemod_ghcr_token) | b64encode }}"
+    }
+  }
+}

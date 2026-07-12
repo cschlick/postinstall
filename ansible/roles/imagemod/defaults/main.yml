@@ -1,0 +1,45 @@
+---
+# roles/imagemod — the postmodern image-moderation service (a heavyweight ML API:
+# PyTorch + NSFW / NudeNet / InsightFace / age models) run as a pinned GHCR
+# container via a podman quadlet. Stacks on gw_node: it LISTENS on the mesh for the
+# chat plane to call it (POST /scan, Bearer API_KEY). No DB, no mesh client cert —
+# it just serves. Its API key comes from ansible/vault-imagemod.yml; this role
+# never carries a secret value.
+# Runtime contract: postmodern-imagemod/API.md + README.
+
+# --- image ---
+imagemod_image_repo: ghcr.io/postmodern-you/postmodern-imagemod
+imagemod_image_tag: ""                # REQUIRED (e.g. "v1.0.0" or "latest")
+imagemod_image: "{{ imagemod_image_repo }}:{{ imagemod_image_tag }}"
+imagemod_pull_always: false           # true for a mutable tag (:latest)
+
+# --- GHCR pull secret (PRIVATE package) ---
+imagemod_ghcr_registry: ghcr.io
+imagemod_ghcr_user: ""                # GitHub user/bot the read:packages token belongs to
+imagemod_authfile: /etc/containers/pm-ghcr-auth.json
+
+# --- run / paths ---
+imagemod_env_file: /etc/postmodern/imagemod.env
+imagemod_quadlet: /etc/containers/systemd/imagemod.container
+# The ML model weights (~GBs) download from HuggingFace on first boot; bind-mount a
+# host dir so they survive container restarts instead of re-downloading each time.
+# The image runs as root, so these map to host root (matches the image's VOLUMEs).
+imagemod_cache_dir: /var/lib/pm-imagemod
+
+# --- network / bind ---
+imagemod_port: 8000                   # gunicorn binds here; opened on the MESH only (group_vars)
+
+# --- config (env) ---
+# API_KEY (imagemod_api_key) comes from the vault. Everything else is optional and
+# defaults inside the image; add overrides verbatim via imagemod_env_extra
+# (e.g. {PIPELINE_WORKERS: 2, MAX_FILE_BYTES: 10485760}).
+imagemod_env_extra: {}
+
+# --- health gate ---
+# First boot downloads the models (~1-2 min), so give /health generous headroom.
+imagemod_health_retries: 60
+imagemod_health_delay: 5
+
+# Stage config only (render + daemon-reload, no pull/start/health). Molecule sets
+# this false — the private image isn't pullable in CI.
+imagemod_deploy_run: true

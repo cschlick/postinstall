@@ -1,0 +1,13 @@
+---
+# SECRETS for the imagemod profile. Copy to vault-imagemod.yml, then encrypt:
+#   cd ansible && ansible-vault encrypt vault-imagemod.yml
+# vault-imagemod.yml is gitignored; loaded explicitly by apply.sh (IMAGEMOD=1).
+# Once encrypted it may be committed: git add -f ansible/vault-imagemod.yml
+
+# The Bearer token clients send as "Authorization: Bearer <key>". This MUST equal
+# the deployed chat plane's chat_moderation_api_key (vault-chat.yml), or the chat
+# plane can't call the scanner and image quarantine never clears.
+imagemod_api_key: "a-strong-shared-secret"
+
+# A GitHub read:packages PAT to PULL the private image (same one the other planes use).
+imagemod_ghcr_token: "ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"

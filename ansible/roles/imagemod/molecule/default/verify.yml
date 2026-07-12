@@ -1,0 +1,54 @@
+---
+- name: Verify
+  hosts: all
+  become: true
+  tasks:
+    - name: Stat the rendered artifacts
+      ansible.builtin.stat:
+        path: "{{ item }}"
+      register: v
+      loop:
+        - /etc/containers/systemd/imagemod.container
+        - /etc/postmodern/imagemod.env
+        - /etc/containers/pm-ghcr-auth.json
+        - /var/lib/pm-imagemod/huggingface
+        - /var/lib/pm-imagemod/insightface
+
+    - name: Assert artifacts exist with the right modes
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          - v.results[0].stat.exists                       # quadlet
+          - v.results[1].stat.exists                       # env file
+          - v.results[1].stat.mode == '0600'
+          - v.results[2].stat.exists                       # authfile
+          - v.results[2].stat.mode == '0600'
+          - v.results[3].stat.isdir                        # model cache dirs
+          - v.results[4].stat.isdir
+
+    - name: Read quadlet + env
+      ansible.builtin.slurp:
+        src: "{{ item }}"
+      register: c
+      loop:
+        - /etc/containers/systemd/imagemod.container
+        - /etc/postmodern/imagemod.env
+
+    - name: Assert the quadlet pins image + host net + GHCR auth + model volumes + boot-wired
+      vars:
+        q: "{{ c.results[0].content | b64decode }}"
+        e: "{{ c.results[1].content | b64decode }}"
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          - "'Image=localhost/imagemod-standin:test' in q"
+          - "'Network=host' in q"
+          - "'\nAuthFile=' not in q"
+          - "'EnvironmentFile=/etc/postmodern/imagemod.env' in q"
+          - "'Environment=REGISTRY_AUTH_FILE=/etc/containers/pm-ghcr-auth.json' in q"
+          - "'Volume=/var/lib/pm-imagemod/huggingface:/root/.cache/huggingface' in q"
+          - "'Volume=/var/lib/pm-imagemod/insightface:/root/.insightface' in q"
+          - "'WantedBy=multi-user.target' in q"
+          # env: API key + rendered extra override
+          - "'API_KEY=test-api-key' in e"
+          - "'PIPELINE_WORKERS=2' in e"
