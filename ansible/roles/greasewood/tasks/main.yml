@@ -93,8 +93,11 @@
   failed_when: false
   when: greasewood_join_token | default('') | length > 0
 
-- name: Join the mesh with the enrollment token
-  ansible.builtin.command: "{{ greasewood_bin }} join {{ greasewood_join_token }}"
+- name: Join the mesh with the enrollment token (self-selecting its role from the menu)
+  ansible.builtin.command:
+    argv: >-
+      {{ [greasewood_bin, 'join', greasewood_join_token]
+         + (['--roles', greasewood_role] if greasewood_role | default('') | length > 0 else []) }}
   when:
     - greasewood_join_token | default('') | length > 0
     - greasewood_iface.rc | default(1) != 0

@@ -22,3 +22,8 @@ nftables_extra_tcp_ports: [8080]
 #   flutter_chat_url:    "wss://chat-<suffix>.pm.internal:8765"
 #   flutter_account_url: "wss://accounts-<suffix>.pm.internal:8766"
 # Empty (the default) → the client falls back to its in-code defaults.
+
+# Mesh role this box self-selects at join (gw join --roles flutter) — the
+# grant-table vocabulary (gw policy). The anchor's standing invite must
+# offer it via --self-roles.
+greasewood_role: flutter

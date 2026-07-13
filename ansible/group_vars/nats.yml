@@ -12,3 +12,8 @@ nats_enabled: true
 # firewall admits the whole overlay (iifname "gw-*" accept) — no per-port rule.
 # Which mesh peers may actually reach 4222/8222 is enforced by greasewood's grant
 # table + NATS's own mutual TLS, not the host firewall.
+
+# Mesh role this box self-selects at join (gw join --roles nats) — the
+# grant-table vocabulary (gw policy). The anchor's standing invite must
+# offer it via --self-roles.
+greasewood_role: nats

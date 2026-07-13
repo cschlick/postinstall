@@ -30,3 +30,8 @@ seed_autostart_delay: 180                      # settle seconds after gw-* appea
 #   SEED_HALLS: 15
 #   SEED_CROWD: 400
 #   SEED_DMS: 200
+
+# Mesh role this box self-selects at join (gw join --roles seed) — the
+# grant-table vocabulary (gw policy). The anchor's standing invite must
+# offer it via --self-roles.
+greasewood_role: seed

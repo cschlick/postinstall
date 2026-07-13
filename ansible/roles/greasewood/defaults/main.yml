@@ -2,3 +2,12 @@
 greasewood_venv: /opt/greasewood
 greasewood_repo: https://gitlab.com/cschlick/greasewood.git
 greasewood_bin: /usr/local/bin/gw
+
+# Mesh role this node self-selects at join (`gw join --roles <role>`), from the
+# menu the anchor's standing invite offers (`gw invite --self-roles ...`). This is
+# the grant-table vocabulary (`gw policy`). Each service profile's group_vars sets
+# its role (chat→chat, account→account, …); the postgres DB boxes get theirs from
+# pmdeploy per-instance (db-accounts vs db-chat). Empty = request no role (join
+# with the invite's base). The invite MUST be a menu invite (--self-roles) or the
+# anchor rejects an out-of-menu role.
+greasewood_role: ""

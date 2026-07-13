@@ -68,3 +68,8 @@ nftables_extra_tcp_ports: [8766]
 # account_webhook_port: 8787                              # the webhook receiver's own port
 # ...and OPEN that webhook port publicly so Paddle can POST (add it above):
 #   nftables_extra_tcp_ports: [8766, 8787]
+
+# Mesh role this box self-selects at join (gw join --roles account) — the
+# grant-table vocabulary (gw policy). The anchor's standing invite must
+# offer it via --self-roles.
+greasewood_role: account

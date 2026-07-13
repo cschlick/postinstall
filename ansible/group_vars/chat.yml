@@ -56,3 +56,8 @@ chat_anon_issuer_pub: |
 # NOTE: group_vars lists don't merge — a host also stacking nats/postgres must
 # list every port it needs in a host_vars override.
 nftables_extra_tcp_ports: [8765]
+
+# Mesh role this box self-selects at join (gw join --roles chat) — the
+# grant-table vocabulary (gw policy). The anchor's standing invite must
+# offer it via --self-roles.
+greasewood_role: chat
